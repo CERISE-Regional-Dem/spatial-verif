@@ -8,6 +8,7 @@
 
 
 NBOOK=cerise_fss_nuuk.qmd
+NBOOK=exploration_carra_east.qmd
 #create the html
 quarto preview $NBOOK --no-browser --no-watch-inputs
 
