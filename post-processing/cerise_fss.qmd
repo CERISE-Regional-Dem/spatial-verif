@@ -1,0 +1,224 @@
+---
+title: "Spatial verification of snow cover with the MET tools package"
+format: 
+  html:
+    page-layout: full
+grid:
+  body-width: 2000px
+  sidebar-width: 200px
+  margin-width: 200px
+author: "Carlos Peralta"
+date: "29 April 2024"
+date-modified: last-modified
+lang: en
+jupyter: python3
+---
+
+## Introduction
+
+First results of spatial verification with the Model Evaluation Tools [(MET) package](https://dtcenter.org/community-code/model-evaluation-tools-met). 
+Data used:
+- CARRA1 West domain in regular lat lon grid (fraction of snow cover).
+- Snow cover data (probability of snow) provided by MetNorway
+
+The fraction skill score was calculated with the MET package `grid_stat`,
+using a binary dummy variable previously defined as 1 or 0 previously
+
+in the CARRA forecast data using the fscov variable.
+The observational data was extracted from the satellite
+product form MET Norway.
+
+```{python}
+import pandas as pd
+from datetime import datetime
+import os
+import sys
+from collections import OrderedDict
+import numpy as np
+from matplotlib import pyplot as plt
+import xarray as xr
+import matplotlib.colors as mcolors
+import seaborn as sns
+
+
+MET_res="/home/cap/Downloads/MET_RESULTS"
+cmap_custom = mcolors.ListedColormap(['blue',"white", 'red'])  # Define a custom colormap with two colors
+#opening one file
+ncfile = "grid_stat_000000L_20150509_000000V_pairs.nc"
+nf = os.path.join(MET_res,ncfile)
+dataset = xr.open_dataset(nf)
+
+```
+
+## Visualization of the domains used for verification
+Calculating the FSS over the whole of the Greenland domain is probably
+not a good idea, since the icy region in the center will mask
+any small scale details. Considering two regions in the verification
+domain: `FULL` (whole of the west CARRA domain) and a piece
+of the West of Greenland (`GREENLAND_WEST_SECTION`)
+Comparing here observation and forecast domains over
+different sizes 
+```{python}
+
+
+var="FCST_FSNOWC_Z0_FULL_ge1"
+#Select the points where there is data defined, so the map is more clearly visible
+not_nan_points = dataset[var].notnull()
+not_nan_coords = dataset[var].where(not_nan_points, drop=True)
+lat = not_nan_coords['lat']
+lon = not_nan_coords['lon']
+sel_dataset = dataset[var].sel(lat=lat, lon=lon)
+sel_dataset.plot(x="lon",y="lat",cmap=cmap_custom)
+plt.title('FULL domain')
+plt.show()
+
+var="FCST_FSNOWC_Z0_GREENLAND_WEST_SECTION_ge1"
+sel_dataset = dataset[var].sel(lat=lat, lon=lon)
+sel_dataset.plot(x="lon",y="lat",cmap=cmap_custom)
+variable = dataset[var]
+plt.title('WEST GREENLAND domain')
+```
+### Visualization of the different neighbourhoods used
+The calculation of the FSS uses different neighbourhood sizes.
+Plotting the different domains below for the `GREENLAND_WEST_SECTION` region.
+
+```{python}
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))  # 1 row, 2 columns
+var = 'OBS_bin_snow_0_all_all_GREENLAND_WEST_SECTION_ge1_NBRHD_9'
+# Define the range of latitude and longitude for the region you want to zoom in
+#lat_min, lat_max = 67,72 #  62,67
+lat_min, lat_max = 60,76 #  62,67
+#lon_min, lon_max = -55,-47.5
+lon_min, lon_max = -80,-20
+
+sel_dataset = dataset[var].sel(lat=lat, lon=lon)
+plot1=sel_dataset.plot(ax=axes[0],x="lon",y="lat",cmap=cmap_custom,add_colorbar=False)
+# Set the axis limits based on the specified latitude and longitude range
+axes[0].set_xlim(lon_min, lon_max)
+axes[0].set_ylim(lat_min, lat_max)
+#variable.plot(x='lon', y='lat')
+axes[0].set_title('OB, Neighbourhood 9')
+#cb1 = fig.colorbar(plot1, ax=axes[0], orientation='horizontal')
+cb = fig.colorbar(plot1) 
+cb.remove()
+cax = fig.add_axes([0.15, 0.95, 0.7, 0.02])  # [left, bottom, width, height]
+fig.colorbar(plot1, cax=cax, orientation='horizontal')
+#cb1 = fig.colorbar(plot1, ax=None, orientation='horizontal')
+#cb1.remove()
+
+var = 'FCST_FSNOWC_Z0_GREENLAND_WEST_SECTION_ge1_NBRHD_9'
+sel_dataset = dataset[var].sel(lat=lat, lon=lon)
+plot2=sel_dataset.plot(ax=axes[1],x="lon",y="lat",cmap=cmap_custom,add_colorbar=False)
+# Set the axis limits based on the specified latitude and longitude range
+axes[1].set_xlim(lon_min, lon_max)
+axes[1].set_ylim(lat_min, lat_max)
+axes[1].set_title('FC, Neighbourhood 9')
+
+# Create a placeholder colorbar for the first plot and remove it
+#cb2 = fig.colorbar(plot2, ax=axes[0], orientation='horizontal')
+#plt.tight_layout()  # Adjust subplots to prevent overlap
+cb = fig.colorbar(plot2) 
+cb.remove()
+plt.show()
+
+# 25 NBR
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))  # 1 row, 2 columns
+var = 'OBS_bin_snow_0_all_all_GREENLAND_WEST_SECTION_ge1_NBRHD_25'
+sel_dataset = dataset[var].sel(lat=lat, lon=lon)
+plot1=sel_dataset.plot(ax=axes[0],x="lon",y="lat",cmap=cmap_custom,add_colorbar=False)
+# Set the axis limits based on the specified latitude and longitude range
+axes[0].set_xlim(lon_min, lon_max)
+axes[0].set_ylim(lat_min, lat_max)
+axes[0].set_title('OB, Neighbourhood 25')
+cax = fig.add_axes([0.15, 0.95, 0.7, 0.02])  # [left, bottom, width, height]
+fig.colorbar(plot1, cax=cax, orientation='horizontal')
+
+var = 'FCST_FSNOWC_Z0_GREENLAND_WEST_SECTION_ge1_NBRHD_25'
+sel_dataset = dataset[var].sel(lat=lat, lon=lon)
+plot2=sel_dataset.plot(ax=axes[1],x="lon",y="lat",cmap=cmap_custom,add_colorbar=False)
+# Set the axis limits based on the specified latitude and longitude range
+axes[1].set_xlim(lon_min, lon_max)
+axes[1].set_ylim(lat_min, lat_max)
+axes[1].set_title('FC, Neighbourhood 25')
+plt.show()
+
+# 49 NBR
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))  # 1 row, 2 columns
+var = 'OBS_bin_snow_0_all_all_GREENLAND_WEST_SECTION_ge1_NBRHD_49'
+sel_dataset = dataset[var].sel(lat=lat, lon=lon)
+plot1=sel_dataset.plot(ax=axes[0],x="lon",y="lat",cmap=cmap_custom,add_colorbar=False)
+# Set the axis limits based on the specified latitude and longitude range
+axes[0].set_xlim(lon_min, lon_max)
+axes[0].set_ylim(lat_min, lat_max)
+#variable.plot(x='lon', y='lat')
+axes[0].set_title('Neighbourhood 49')
+cax = fig.add_axes([0.15, 0.95, 0.7, 0.02])  # [left, bottom, width, height]
+fig.colorbar(plot1, cax=cax, orientation='horizontal')
+
+var = 'FCST_FSNOWC_Z0_GREENLAND_WEST_SECTION_ge1_NBRHD_49'
+sel_dataset = dataset[var].sel(lat=lat, lon=lon)
+plot2=sel_dataset.plot(ax=axes[1],x="lon",y="lat",cmap=cmap_custom,add_colorbar=False)
+# Set the axis limits based on the specified latitude and longitude range
+axes[1].set_xlim(lon_min, lon_max)
+axes[1].set_ylim(lat_min, lat_max)
+axes[1].set_title('FC, Neighbourhood 49')
+plt.show()
+
+```
+
+## Plot the FSS for each neighbourhood
+```{python}
+all_results = os.listdir(MET_res)
+fss_files=OrderedDict()
+for f in all_results:
+    if f.endswith("_nbrcnt.txt"):
+        read_date = f.split("_")[3]
+        fss_files[read_date]  = pd.read_csv(os.path.join(MET_res,f),sep=r'\s+')
+df_fss_full = pd.DataFrame(columns=["date","points","fss"])
+df_fss_gr = pd.DataFrame(columns=["date","points","fss"])
+for key in fss_files:
+    data = fss_files[key][fss_files[key]["VX_MASK"] == "FULL"]
+    for _,r in data.iterrows():
+        conv_date = datetime.strptime(r["FCST_VALID_BEG"],"%Y%m%d_%H%M%S")
+        data_row = pd.DataFrame({"date":[conv_date],"points":[r["INTERP_PNTS"]],"fss":[r["FSS"]]},columns=["date","points","fss"])
+        df_fss_full=pd.concat([df_fss_full,data_row],ignore_index=True)
+
+for key in fss_files:
+    data = fss_files[key][fss_files[key]["VX_MASK"] == "GREENLAND_WEST_SECTION"]
+    for _,r in data.iterrows():
+        conv_date = datetime.strptime(r["FCST_VALID_BEG"],"%Y%m%d_%H%M%S")
+        data_row = pd.DataFrame({"date":[conv_date],"points":[r["INTERP_PNTS"]],"fss":[r["FSS"]]},columns=["date","points","fss"])
+        df_fss_gr=pd.concat([df_fss_gr,data_row],ignore_index=True)
+
+df_fss_full["day"] = df_fss_full["date"].dt.strftime('%Y-%m-%d')
+df_fss_gr["day"] = df_fss_gr["date"].dt.strftime('%Y-%m-%d')
+cmap = "viridis"
+cmap = "coolwarm"
+pivot_df = df_fss_full.pivot(index='day', columns='points', values='fss')
+
+# Plot the heatmap
+plt.figure(figsize=(12, 8))
+ax=sns.heatmap(pivot_df, annot=True, fmt=".2f", cmap=cmap)
+cbar_ticks = [0.4,0.5,0.6,0.7,0.8,0.9] # Specify your desired tick range
+cbar = ax.collections[0].colorbar
+cbar.set_ticks(cbar_ticks)  # Set the colorbar ticks
+cbar.set_ticklabels([str(t) for t in cbar_ticks])  # Set the
+#cmap = plt.colorbar("coolwarm",fraction=0.03,ticks=[0.4,0.5,0.6,0.7,0.8,0.9])
+
+plt.title(f'FSS Heatmap for full region')
+plt.xlabel('Neighbourhood size')
+plt.ylabel('Date')
+
+plt.show()
+
+pivot_df = df_fss_gr.pivot(index='day', columns='points', values='fss')
+# Plot the heatmap
+plt.figure(figsize=(12, 8))
+sns.heatmap(pivot_df, annot=True, fmt=".2f", cmap=cmap)
+
+plt.title('FSS Heatmap for Greenland West section')
+plt.xlabel('Neighbourhood size')
+plt.ylabel('Date')
+
+plt.show()
+```
