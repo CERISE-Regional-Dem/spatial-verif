@@ -8,3 +8,8 @@ Spatial verification scripts
 - [Model Evaluation Tools](https://met.readthedocs.io/en/latest/Users_Guide/overview.html), using version 11.
 
 
+
+## install python env
+module load python3/3.10.10-01
+python3 -m venv .venv
+pip install -r requirements.txt
