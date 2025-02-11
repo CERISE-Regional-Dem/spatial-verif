@@ -26,10 +26,10 @@ ims["y"] = np.arange(ims.dims['y'])
 
 date_range = ims.sel(time=slice("2016-09-01","2016-09-30"))
 
-def dump_subset(subset_ds,output_file = 'binary_snow_classification.nc'):
-    # Assuming cerise_dump is your original dataset
+def dump_subset(ds,output_file = 'binary_snow_classification.nc'):
+    # Assuming ims_dump is your original dataset
     # First, select only the variables we want to keep
-    subset_ds = cerise_dump[['bin_snow','time', 'y', 'x', 'crs']]
+    subset_ds = ds[['bin_snow','time', 'y', 'x', 'crs']]
     
     # Add attributes for bin_snow if not already present
     subset_ds['bin_snow'].attrs.update({
@@ -135,10 +135,7 @@ def set_attrs(ds):
 
 for time in date_range.time:
    date = datetime.datetime.strftime(pd.to_datetime(time.item()),"%Y-%m-%d")
-   cerise_dump = date_range.sel(time=time) 
-   set_attrs(cerise_dump)
+   ims_dump = date_range.sel(time=time) 
+   set_attrs(ims_dump)
    date = date.replace("-","")
-   dump_subset(cerise_dump,f"ims_{date}.nc")
-   #cerise_dump.to_netcdf(f"cerise_{date}.nc",format="NETCDF4")
-   #cerise_dump["bin_snow"].to_netcdf(f"cerise_{date}.nc",format="NETCDF4")
-
+   dump_subset(ims_dump,f"ims_{date}.nc")

@@ -9,11 +9,11 @@ import datetime
 import pandas as pd
 
 
-carra1_analysis = xr.open_zarr("/ec/scratch/fab0/Projects/cerise/carra_snow_data/carrasnow_v2.zarr")
+eraland_analysis = xr.open_zarr("/ec/scratch/fab0/Projects/cerise/carra_snow_data/eraland.zarr/")
 # Dimensions:     (time: 1583, y: 1000, x: 800)
-#carra1_analysis["bin_snow"] = np.where(carra1_analysis["rsn"] != 0, (carra1_analysis["sd"] / carra1_analysis["rsn"] > 0.01).astype(int), np.nan)
+#eraland_analysis["bin_snow"] = np.where(eraland_analysis["rsn"] != 0, (eraland_analysis["sd"] / eraland_analysis["rsn"] > 0.01).astype(int), np.nan)
 
-date_range = carra1_analysis.sel(time=slice("2016-09-01","2016-09-30"))
+date_range = eraland_analysis.sel(time=slice("2016-09-01","2016-09-30"))
 
 def dump_subset(ds,output_file = 'binary_snow_classification.nc'):
     # Celect only the variables we want to keep
@@ -123,24 +123,26 @@ def set_attrs(ds):
 
 for time in date_range.time:
    date = datetime.datetime.strftime(pd.to_datetime(time.item()),"%Y-%m-%d")
-   print(f"Dumping data on {time}")
-   carra1_dump = date_range.sel(time=time) 
-   carra1_dump["bin_snow"] = (
+   eraland_dump = date_range.sel(time=time) 
+   print(f"Dumping data for {date}")
+   if len(eraland_dump["time"].dims) != 0:
+       eraland_dump = eraland_dump.isel(time=0) #sometimes there are two times with the same value, not sure whY??
+   eraland_dump["bin_snow"] = (
    ["y", "x"],  # specify dimensions
-    np.where(carra1_dump["rsn"] != 0, (carra1_dump["sd"] / carra1_dump["rsn"] > 0.01).astype(int), np.nan)
+    np.where(eraland_dump["rsn"] != 0, (eraland_dump["sd"] / eraland_dump["rsn"] > 0.01).astype(int), np.nan)
    )
    #Create new coordinates based on dimension sizes
-   new_x = np.arange(carra1_dump.dims['x'])  # Will create array from 0 to 799
-   new_y = np.arange(carra1_dump.dims['y'])  # Will create array from 0 to 999
+   new_x = np.arange(eraland_dump.dims['x'])  # Will create array from 0 to 799
+   new_y = np.arange(eraland_dump.dims['y'])  # Will create array from 0 to 999
     
    # Assign new coordinates to the dataset
    #ims = ims.assign_coords(x=new_x, y=new_y)
-   carra1_dump["x"] = np.arange(carra1_dump.dims['x'])
-   carra1_dump["y"] = np.arange(carra1_dump.dims['y'])
+   eraland_dump["x"] = np.arange(eraland_dump.dims['x'])
+   eraland_dump["y"] = np.arange(eraland_dump.dims['y'])
 
-   set_attrs(carra1_dump)
+   set_attrs(eraland_dump)
    date = date.replace("-","")
-   dump_subset(carra1_dump,f"carra1_{date}.nc")
+   dump_subset(eraland_dump,f"eraland_{date}.nc")
    #cerise_dump.to_netcdf(f"cerise_{date}.nc",format="NETCDF4")
    #cerise_dump["bin_snow"].to_netcdf(f"cerise_{date}.nc",format="NETCDF4")
 
