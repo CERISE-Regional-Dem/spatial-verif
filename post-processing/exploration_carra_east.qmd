@@ -1,0 +1,224 @@
+---
+title: "Spatial verification of snow cover with the MET tools package for CARRA East"
+format: 
+  html:
+    page-layout: full
+grid:
+  body-width: 2000px
+  sidebar-width: 200px
+  margin-width: 200px
+author: "Carlos Peralta"
+date: "4 February 2025"
+date-modified: last-modified
+lang: en
+jupyter: python3
+---
+
+## Introduction
+
+Calculating fraction skill score on the CARRA1 East domain using the Model Evaluation Tools [(MET) package](https://dtcenter.org/community-code/model-evaluation-tools-met). The fraction skill score was calculated with the MET package `grid_stat`. Evaluating `bin_snow` variable, defined as below
+
+- Model data. CARRA1 East domain in regular latlon grid. Calculated  `snow_depth_water_equivalent/snow_density` to get snow depth. Setting `bin_snow == 1` where snow depth > 0.01, 0 otherwise.
+- Snow cover data from nasa IMS. Setting `bin_snow = 0` wherever `IMS_Surface_Values == 4`, 0 otherwise.
+
+
+
+## Visualization of the domains used for verification
+
+Period selected: May 2016.
+Considering the full region for verification (domain: `FULL`) 
+
+```{python}
+from warnings import filterwarnings
+filterwarnings('ignore')
+import pandas as pd
+from datetime import datetime
+import os
+import sys
+from collections import OrderedDict
+import numpy as np
+from matplotlib import pyplot as plt
+import xarray as xr
+import matplotlib.colors as mcolors
+import seaborn as sns
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+MET_res = "/media/cap/extra_work/CERISE/MET_results"
+
+#color map to plot binary snow
+#opening one file
+ncfile = "grid_stat_000000L_20160501_000000V_pairs.nc"
+
+nf = os.path.join(MET_res,ncfile)
+dataset = xr.open_dataset(nf)
+var="FCST_bin_snow_all_all_FULL"
+
+data = dataset[var]
+
+# Create a plot with Cartopy
+#fig, ax = plt.subplots(subplot_kw={"projection": ccrs.PlateCarree()})
+fig, ax = plt.subplots(figsize=(15, 10), subplot_kw={"projection": ccrs.PlateCarree()})  # Increased figure size
+cmap_custom = mcolors.ListedColormap(['blue',"white", 'red'])  # Define a custom colormap with two colors
+
+#data.plot(ax=ax, transform=ccrs.PlateCarree(), cmap=cmap_custom, cbar_kwargs={"label": "bin_snow cover"})
+plot = data.plot(ax=ax,
+                 transform=ccrs.PlateCarree(),
+                 cmap=cmap_custom,
+                 cbar_kwargs={
+                     "orientation": "horizontal",  # Make colorbar horizontal
+                     "label": "Binary snow cover (forecast)",
+                     "pad": 0.1,  # Add some padding between map and colorbar
+                     "shrink": 0.8,  # Make colorbar 80% of the figure width
+                     "aspect": 40,  # Control colorbar thickness
+                     "location": "bottom"  # Place colorbar at bottom
+                 })
+
+# Add country borders and coastlines
+ax.add_feature(cfeature.BORDERS, linestyle="--", edgecolor="black")
+ax.add_feature(cfeature.COASTLINE, edgecolor="black")
+
+# Add country borders and coastlines
+ax.add_feature(cfeature.BORDERS, linestyle="--", edgecolor="black")
+ax.add_feature(cfeature.COASTLINE, edgecolor="black")
+
+# Add gridlines
+ax.gridlines(draw_labels=True, linewidth=0.5, color="gray", alpha=0.5, linestyle="--")
+
+
+
+var="OBS_bin_snow_0_all_all_FULL"
+data = dataset[var]
+fig, ax = plt.subplots(figsize=(15, 10), subplot_kw={"projection": ccrs.PlateCarree()})  # Increased figure size
+cmap_custom = mcolors.ListedColormap(['blue',"white", 'red'])  # Define a custom colormap with two colors
+
+#data.plot(ax=ax, transform=ccrs.PlateCarree(), cmap=cmap_custom, cbar_kwargs={"label": "bin_snow cover"})
+plot = data.plot(ax=ax,
+                 transform=ccrs.PlateCarree(),
+                 cmap=cmap_custom,
+                 cbar_kwargs={
+                     "orientation": "horizontal",  # Make colorbar horizontal
+                     "label": "Binary snow cover (observation)",
+                     "pad": 0.1,  # Add some padding between map and colorbar
+                     "shrink": 0.8,  # Make colorbar 80% of the figure width
+                     "aspect": 40,  # Control colorbar thickness
+                     "location": "bottom"  # Place colorbar at bottom
+                 })
+
+# Add country borders and coastlines
+ax.add_feature(cfeature.BORDERS, linestyle="--", edgecolor="black")
+ax.add_feature(cfeature.COASTLINE, edgecolor="black")
+
+# Add country borders and coastlines
+ax.add_feature(cfeature.BORDERS, linestyle="--", edgecolor="black")
+ax.add_feature(cfeature.COASTLINE, edgecolor="black")
+
+# Add gridlines
+ax.gridlines(draw_labels=True, linewidth=0.5, color="gray", alpha=0.5, linestyle="--")
+
+```
+## Raw differences between forecast and observations
+
+```{python}
+fc_ob = "DIFF_bin_snow_all_all_bin_snow_0_all_all_FULL"
+
+fig, ax = plt.subplots(figsize=(15, 10), subplot_kw={"projection": ccrs.PlateCarree()})  # Increased figure size
+data = dataset[fc_ob]
+plot = data.plot(ax=ax,
+                 transform=ccrs.PlateCarree(),
+                 cmap=cmap_custom,
+                 cbar_kwargs={
+                     "orientation": "horizontal",  # Make colorbar horizontal
+                     "label": "Binary snow cover (observation)",
+                     "pad": 0.1,  # Add some padding between map and colorbar
+                     "shrink": 0.8,  # Make colorbar 80% of the figure width
+                     "aspect": 40,  # Control colorbar thickness
+                     "location": "bottom"  # Place colorbar at bottom
+                 })
+
+# Add country borders and coastlines
+ax.add_feature(cfeature.BORDERS, linestyle="--", edgecolor="black")
+ax.add_feature(cfeature.COASTLINE, edgecolor="black")
+
+# Add country borders and coastlines
+ax.add_feature(cfeature.BORDERS, linestyle="--", edgecolor="black")
+ax.add_feature(cfeature.COASTLINE, edgecolor="black")
+
+# Add gridlines
+ax.gridlines(draw_labels=True, linewidth=0.5, color="gray", alpha=0.5, linestyle="--")
+```
+## Neighbourhoods using for FSS calculation
+
+```{python}
+fcst_vars= ['FCST_bin_snow_all_all_FULL_ge1_NBRHD_9', 'FCST_bin_snow_all_all_FULL_ge1_NBRHD_25', 'FCST_bin_snow_all_all_FULL_ge1_NBRHD_49']
+obs_vars= ['OBS_bin_snow_0_all_all_FULL_ge1_NBRHD_9', 'OBS_bin_snow_0_all_all_FULL_ge1_NBRHD_25', 'OBS_bin_snow_0_all_all_FULL_ge1_NBRHD_49']
+for var in fcst_vars:
+    i = var.split("_")[-1]
+    dataset[var].plot(x="lon",y="lat",cmap=cmap_custom)
+    # Set the axis limits based on the specified latitude and longitude range
+    variable = dataset[var]
+    plt.title(f'FCST Neighbourhood {i}, all domain')
+    plt.show()
+for var in obs_vars:
+    i = var.split("_")[-1]
+    dataset[var].plot(x="lon",y="lat",cmap=cmap_custom)
+    # Set the axis limits based on the specified latitude and longitude range
+    variable = dataset[var]
+    plt.title(f'OBS Neighbourhood {i}, all domain')
+    plt.show()
+```
+## Fraction skill score over all domain
+
+```{python}
+
+MET_res = "/media/cap/extra_work/CERISE/MET_results"
+all_results = os.listdir(MET_res)
+#results = OrderedDict()
+#for f in all_results:
+#    
+#    if f.endswith("_cts.txt"):
+#        read_date = f.split("_")[3]
+#        results[read_date]  = pd.read_csv(os.path.join(MET_res,f),sep=r'\s+')
+#    elif f.endswith(".nc"):
+#        ncfile = f
+fss_files=OrderedDict()
+for f in all_results:
+    
+    if f.endswith("_nbrcnt.txt"):
+        read_date = f.split("_")[3]
+        fss_files[read_date]  = pd.read_csv(os.path.join(MET_res,f),sep=r'\s+')
+
+df_fss_full = pd.DataFrame(columns=["date","points","fss"])
+for key in fss_files:
+    data = fss_files[key][fss_files[key]["VX_MASK"] == "FULL"]
+    for _,r in data.iterrows():
+        conv_date = datetime.strptime(r["FCST_VALID_BEG"],"%Y%m%d_%H%M%S")
+        data_row = pd.DataFrame({"date":[conv_date],"points":[r["INTERP_PNTS"]],"fss":[r["FSS"]]},columns=["date","points","fss"])
+        df_fss_full=pd.concat([df_fss_full,data_row],ignore_index=True)
+df_fss_full["day"] = df_fss_full["date"].dt.strftime('%Y-%m-%d')
+pivot_df = df_fss_full.pivot(index='day', columns='points', values='fss')
+
+from matplotlib.colors import LinearSegmentedColormap
+
+
+# Create custom colormap (red to green)
+colors = ['red', 'green']
+n_bins = 10  # Number of color gradients
+cmap = LinearSegmentedColormap.from_list("custom", colors, N=n_bins)
+import seaborn as sns
+import matplotlib.pyplot as plt
+#cmap = "viridis"
+#cmap = "coolwarm"
+
+pivot_df = df_fss_full.pivot(index='day', columns='points', values='fss')
+
+# Plot the heatmap
+plt.figure(figsize=(12, 8))
+sns.heatmap(pivot_df, annot=True, fmt=".2f", cmap=cmap)
+
+plt.title(f'FSS Heatmap for full region')
+plt.xlabel('Neighbourhood size')
+plt.ylabel('Date')
+
+plt.show()
+  
+```
