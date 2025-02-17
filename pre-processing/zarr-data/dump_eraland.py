@@ -1,19 +1,23 @@
 import xarray as xr
 import numpy as np
-
 import cartopy.crs as ccrs
 import pyproj
 import pyresample
 import datetime
-
 import pandas as pd
+
+import sys
+date_ini = str(sys.argv[1]) # "2016-09-01"
+date_end = str(sys.argv[2])
+
+
 
 
 eraland_analysis = xr.open_zarr("/ec/scratch/fab0/Projects/cerise/carra_snow_data/eraland.zarr/")
 # Dimensions:     (time: 1583, y: 1000, x: 800)
 #eraland_analysis["bin_snow"] = np.where(eraland_analysis["rsn"] != 0, (eraland_analysis["sd"] / eraland_analysis["rsn"] > 0.01).astype(int), np.nan)
 
-date_range = eraland_analysis.sel(time=slice("2016-09-01","2016-09-30"))
+date_range = eraland_analysis.sel(time=slice(date_ini,date_end))
 
 def dump_subset(ds,output_file = 'binary_snow_classification.nc'):
     # Celect only the variables we want to keep

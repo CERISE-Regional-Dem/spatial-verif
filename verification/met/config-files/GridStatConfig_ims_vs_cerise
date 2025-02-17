@@ -29,7 +29,7 @@ obtype = "OBS";
 // May be set separately in each "field" entry
 //
 regrid = {
-   to_grid    = FCST; // OBS; //NONE;
+   to_grid    = NONE; // FCST; // OBS; //NONE;
    method     = NEAREST;
    width      = 1;
    vld_thresh = 0.5;
@@ -134,7 +134,8 @@ climo_cdf = {
 //
 mask = {
    grid = [ "FULL" ];
-   poly = [];
+   //poly = [];
+   poly = ["/ec/res4/scratch/nhd/CERISE/spatial-verif/verification/met/masked_north.nc" ];
    //poly = [ "/home/nhd/scripts/MET/gr_section_west.poly","/home/nhd/scripts/MET/area_around_nuuk.poly"];
    //poly = ["/home/nhd/scripts/MET/north_scandi.poly"];
 }

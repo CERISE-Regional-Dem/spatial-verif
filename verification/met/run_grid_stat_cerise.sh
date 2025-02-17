@@ -27,10 +27,15 @@ maxday_month()
 GS=/perm/nhd/MET/bin/grid_stat
 GP=/perm/nhd/MET/bin/plot_data_plane
 
-FCPATH=/ec/res4/scratch/nhd/CERISE/CARRA1/from_zarr
+MODEL=eraland
+#only CERISE in this path
+#FCPATH=/ec/res4/scratch/nhd/CERISE/${MODEL^^}_output #/from_zarr
+FCPATH=/ec/res4/scratch/nhd/CERISE/ERA5/from_zarr
 OBPATH=/ec/res4/scratch/nhd/CERISE/IMS_snow_cover/from_zarr
-OUTPUT_DIR=/ec/res4/scratch/nhd/CERISE/MET_CARRA1_vs_IMS_winter_2015
-CONFIG=config-files/GridStatConfig_ims_vs_carra1
+OUTPUT_DIR=/ec/res4/scratch/nhd/CERISE/MET_${MODEL^^}_vs_IMS_winter_2015
+
+#CONFIG=config-files/GridStatConfig_ims_vs_${MODEL}
+CONFIG=config-files/GridStatConfig_ims_vs_eraland
 
 [ ! -d $OUTPUT_DIR ] && mkdir -p $OUTPUT_DIR
 
@@ -48,9 +53,9 @@ maxday_month
 for D in $(seq -w 1 $MAXDAY); do
 DATE=${PERIOD}$D
 OB=$OBPATH/ims_${DATE}.nc
-FC=$FCPATH/carra1_${DATE}.nc
-#echo $OB
-#echo $FC
+FC=$FCPATH/${MODEL}_${DATE}.nc
+echo $OB
+echo $FC
 if [[ -f $OB ]] && [[ -f $FC ]]; then
 $GS $FC $OB $CONFIG -outdir $OUTPUT_DIR -v 6
 fi

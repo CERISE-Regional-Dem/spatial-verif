@@ -5,8 +5,11 @@ import cartopy.crs as ccrs
 import pyproj
 import pyresample
 import datetime
-
 import pandas as pd
+import sys
+
+date_ini = str(sys.argv[1]) # "2016-09-01"
+date_end = sys.argv[2]
 
 
 #ims = xr.open_zarr("/ec/res4/scratch/nhd/CERISE/IMS_snow_cover/ims.zarr")
@@ -24,7 +27,7 @@ ims["x"] = np.arange(ims.dims['x'])
 ims["y"] = np.arange(ims.dims['y'])
 
 
-date_range = ims.sel(time=slice("2016-09-01","2016-09-30"))
+date_range = ims.sel(time=slice(date_ini,date_end))
 
 def dump_subset(ds,output_file = 'binary_snow_classification.nc'):
     # Assuming ims_dump is your original dataset

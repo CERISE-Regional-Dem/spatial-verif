@@ -29,7 +29,7 @@ crs = area_def.to_cartopy_crs()
 ims = xr.open_zarr("/scratch/fab0/Projects/cerise/carra_snow_data/ims.zarr")
 ims["bin_snow"]  = xr.where(ims["IMS_Surface_Values"] == 4, 1, 0)  
 
-date_range = ims.sel(time=slice("2016-09-01","2016-09-30"))
+#date_range = ims.sel(time=slice(date_ini,date_end))
 
 def map_field(field, ax, **kwargs):
     import cartopy.feature as cfeature
@@ -43,7 +43,8 @@ def map_field(field, ax, **kwargs):
                   **kwargs)
 
 
-ims_dump = date_range.sel(time="2016-09-01") 
+date_sel = "2015-11-01"
+ims_dump = ims.sel(time=date_sel)
 ims_dump = ims_dump.isel(y=slice(None, None, -1)) #not sure why I need to do it here and not in the others...
 colors = ['#FFFFFF00', '#FF0000']  # First color is transparent, second is red
 custom_cmap = plt.matplotlib.colors.ListedColormap(colors)
@@ -56,6 +57,6 @@ cb = fig.colorbar(
             im, ax=ax, orientation="vertical", label="Binary snow", aspect=40
         )
 
-fig.suptitle("Binary snow from IMS on 2016-09-01")
+fig.suptitle(f"Binary snow from IMS on {date_sel}")
 plt.show()
-fig.savefig("ims.png")
+fig.savefig(f"ims_{date_sel}.png")

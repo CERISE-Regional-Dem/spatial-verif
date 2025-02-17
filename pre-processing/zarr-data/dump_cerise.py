@@ -8,13 +8,16 @@ import datetime
 
 import pandas as pd
 
-
+import sys
+date_ini = str(sys.argv[1]) # "2016-09-01"
+date_end = sys.argv[2]
+#avaiable from 2015-09 2019-08-05T06
 cerise_analysis = xr.open_zarr("/ec/scratch/fab0/Projects/cerise/carra_snow_data/ana_v2.zarr")
 
 cerise_subset = cerise_analysis.mean(dim="member")
 #cerise_subset = cerise_analysis.sel(patch=1) #,stid=1003)
 cerise_subset["bin_snow"]  = xr.where(cerise_subset["hxa"] > 0.01, 1, 0)  
-date_range = cerise_subset.sel(time=slice("2016-09-01","2016-09-30"))
+date_range = cerise_subset.sel(time=slice(date_ini,date_end))
 
 def dump_subset(subset_ds,output_file = 'binary_snow_classification.nc'):
     # Assuming cerise_dump is your original dataset

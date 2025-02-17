@@ -41,6 +41,6 @@ fi
 done
 cd -
 }
-INI=20160901
-END=20160930
+INI=20160101
+END=20161231
 all_dates

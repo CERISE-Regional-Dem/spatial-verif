@@ -133,8 +133,10 @@ climo_cdf = {
 // May be set separately in each "obs.field" entry
 //
 mask = {
-   grid = [ "FULL" ];
-   poly = [];
+   grid = [ "FULL"];
+   //poly = ["/ec/res4/scratch/nhd/CERISE/spatial-verif/verification/met/polygons/north.poly"];
+   //poly = ["/ec/res4/scratch/nhd/CERISE/spatial-verif/verification/met/polygons/north_inverted.poly", "/ec/res4/scratch/nhd/CERISE/spatial-verif/verification/met/masked_north.nc" ];
+   poly = ["/ec/res4/scratch/nhd/CERISE/spatial-verif/verification/met/masked_north.nc" ];
    //poly = [ "/home/nhd/scripts/MET/gr_section_west.poly","/home/nhd/scripts/MET/area_around_nuuk.poly"];
    //poly = ["/home/nhd/scripts/MET/north_scandi.poly"];
 }
