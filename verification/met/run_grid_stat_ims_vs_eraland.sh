@@ -11,14 +11,14 @@ GP=/perm/nhd/MET/bin/plot_data_plane
 
 FCPATH=/ec/res4/scratch/nhd/CERISE/ERA5/from_zarr
 OBPATH=/ec/res4/scratch/nhd/CERISE/IMS_snow_cover/from_zarr
-OUTPUT_DIR=/ec/res4/scratch/nhd/CERISE/MET_ERALAND_vs_IMS
+OUTPUT_DIR=/ec/res4/scratch/nhd/CERISE/MET_ERALAND_vs_IMS_winter_2015
 CONFIG=config-files/GridStatConfig_ims_vs_eraland
 
 [ ! -d $OUTPUT_DIR ] && mkdir -p $OUTPUT_DIR
 
 # $GP $FC fcst.ps 'name="FSNOWC"; level="Z0";'
-for D in $(seq -w 1 30); do
-DATE=201609$D
+for D in $(seq -w 1 15); do
+DATE=201511$D
 OB=$OBPATH/ims_${DATE}.nc
 FC=$FCPATH/eraland_${DATE}.nc
 echo $OB

@@ -132,8 +132,8 @@ for time in date_range.time:
    if len(eraland_dump["time"].dims) != 0:
        eraland_dump = eraland_dump.isel(time=0) #sometimes there are two times with the same value, not sure whY??
    eraland_dump["bin_snow"] = (
-   ["y", "x"],  # specify dimensions
-    np.where(eraland_dump["rsn"] != 0, (eraland_dump["sd"] / eraland_dump["rsn"] > 0.01).astype(int), np.nan)
+   ["y", "x"],  # specify dimensions. NOTE: era land is in meters and not kg/m3
+    np.where(eraland_dump["rsn"] != 0, (1000*eraland_dump["sd"] / eraland_dump["rsn"] > 0.01).astype(int), np.nan)
    )
    #Create new coordinates based on dimension sizes
    new_x = np.arange(eraland_dump.dims['x'])  # Will create array from 0 to 799

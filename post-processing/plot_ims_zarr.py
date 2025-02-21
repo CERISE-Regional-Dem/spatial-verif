@@ -6,6 +6,9 @@ import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
+import sys
+
+date_selected = str(sys.argv[1]) # "2016-09-01"
 
 def get_ana_areadef():
     ana = xr.open_zarr(f"/scratch/fab0/Projects/cerise/carra_snow_data/ana_v2.zarr")
@@ -43,8 +46,7 @@ def map_field(field, ax, **kwargs):
                   **kwargs)
 
 
-date_sel = "2015-11-01"
-ims_dump = ims.sel(time=date_sel)
+ims_dump = ims.sel(time=date_selected)
 ims_dump = ims_dump.isel(y=slice(None, None, -1)) #not sure why I need to do it here and not in the others...
 colors = ['#FFFFFF00', '#FF0000']  # First color is transparent, second is red
 custom_cmap = plt.matplotlib.colors.ListedColormap(colors)
@@ -57,6 +59,6 @@ cb = fig.colorbar(
             im, ax=ax, orientation="vertical", label="Binary snow", aspect=40
         )
 
-fig.suptitle(f"Binary snow from IMS on {date_sel}")
-plt.show()
-fig.savefig(f"ims_{date_sel}.png")
+fig.suptitle(f"Binary snow from IMS on {date_selected}")
+#plt.show()
+fig.savefig(f"ims_{date_selected}.png")

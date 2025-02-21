@@ -7,6 +7,9 @@ import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 
+import sys
+date_selected = str(sys.argv[1]) # "2016-09-01"
+
 
 
 
@@ -43,8 +46,8 @@ area_def = get_ana_areadef()
 crs = area_def.to_cartopy_crs()
 
 carra1_analysis = xr.open_zarr("/ec/scratch/fab0/Projects/cerise/carra_snow_data/carrasnow_v2.zarr")
-date_range = carra1_analysis.sel(time=slice("2016-09-01","2016-09-30"))
-carra1_dump = date_range.sel(time="2016-09-15")
+#date_range = carra1_analysis.sel(time=slice("2016-09-01","2016-09-30"))
+carra1_dump = carra1_analysis.sel(time=date_selected)
 carra1_dump = carra1_dump.isel(y=slice(None, None, -1)) #invert y axis
 
 #carra1_dump["bin_snow"] = np.where(carra1_dump["rsn"] != 0, (carra1_dump["sd"] / carra1_dump["rsn"] > 0.01).astype(int), np.nan)
@@ -66,6 +69,6 @@ cb = fig.colorbar(
             im, ax=ax, orientation="vertical", label="Binary snow", aspect=40
         )
 
-fig.suptitle("Binary snow from CARRA1 East on 2016-09-15")
-plt.show()
-fig.savefig("carra1.png")
+fig.suptitle(f"Binary snow from CARRA1 East on {date_selected}")
+#plt.show()
+fig.savefig(f"carra_{date_selected}.png")

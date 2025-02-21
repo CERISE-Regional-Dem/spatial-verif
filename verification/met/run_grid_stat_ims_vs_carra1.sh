@@ -35,7 +35,7 @@ CONFIG=config-files/GridStatConfig_ims_vs_carra1
 [ ! -d $OUTPUT_DIR ] && mkdir -p $OUTPUT_DIR
 
 # $GP $FC fcst.ps 'name="FSNOWC"; level="Z0";'
-for YYYY in 2015 2016; do
+for YYYY in 2015; do
 
 if [[ $YYYY -lt 2016 ]]; then
 MONTHS="11 12"

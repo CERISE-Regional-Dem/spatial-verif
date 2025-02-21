@@ -1,13 +1,14 @@
 import xarray as xr
 import numpy as np
-
 import cartopy.crs as ccrs
 import pyproj
 import pyresample
 import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
+import sys
 
+date_selected = str(sys.argv[1]) # "2016-09-01"
 
 def get_ana_areadef():
     ana = xr.open_zarr(f"/scratch/fab0/Projects/cerise/carra_snow_data/ana_v2.zarr")
@@ -43,8 +44,8 @@ crs = area_def.to_cartopy_crs()
 cerise_analysis = xr.open_zarr("/ec/scratch/fab0/Projects/cerise/carra_snow_data/ana_v2.zarr")
 cerise_subset = cerise_analysis.mean(dim="member")
 cerise_subset["bin_snow"]  = xr.where(cerise_subset["hxa"] > 0.01, 1, 0)  
-date_range = cerise_subset.sel(time=slice("2016-09-01","2016-09-30"))
-cerise_dump = date_range.sel(time="2016-09-01")
+#date_range = cerise_subset.sel(time=slice("2016-09-01","2016-09-30"))
+cerise_dump = cerise_subset.sel(time=date_selected)
 cerise_dump = cerise_dump.isel(y=slice(None, None, -1)) #not sure why I need to do it here and not in the others...
 
 colors = ['#FFFFFF00', '#FF0000']  # First color is transparent, second is red
@@ -58,6 +59,9 @@ cb = fig.colorbar(
             im, ax=ax, orientation="vertical", label="Binary snow", aspect=40
         )
 
-fig.suptitle("Binary snow from CERISE on 2016-09-01")
-plt.show()
-fig.savefig("cerise.png")
+fig.suptitle(f"Binary snow from CERISE on {date_selected}")
+# Adjust tick label font sizes
+plt.xticks(fontsize=12)
+plt.yticks(fontsize=12)
+#plt.show()
+fig.savefig(f"cerise_{date_selected}.png")

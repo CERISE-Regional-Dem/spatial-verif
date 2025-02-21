@@ -136,9 +136,10 @@ mask = {
    grid = [ "FULL"];
    //poly = ["/ec/res4/scratch/nhd/CERISE/spatial-verif/verification/met/polygons/north.poly"];
    //poly = ["/ec/res4/scratch/nhd/CERISE/spatial-verif/verification/met/polygons/north_inverted.poly", "/ec/res4/scratch/nhd/CERISE/spatial-verif/verification/met/masked_north.nc" ];
-   poly = ["/ec/res4/scratch/nhd/CERISE/spatial-verif/verification/met/masked_north.nc" ];
+   //poly = ["/ec/res4/scratch/nhd/CERISE/spatial-verif/verification/met/masked_north.nc" ];
    //poly = [ "/home/nhd/scripts/MET/gr_section_west.poly","/home/nhd/scripts/MET/area_around_nuuk.poly"];
    //poly = ["/home/nhd/scripts/MET/north_scandi.poly"];
+   poly = ["/ec/res4/scratch/nhd/CERISE/spatial-verif/verification/met/north_sweden_mask.nc" ];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
