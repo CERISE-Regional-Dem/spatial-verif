@@ -6,8 +6,8 @@
 source /ec/res4/scratch/nhd/CERISE/cerise_snow_verif/.venv/bin/activate
 
 cd /ec/res4/scratch/nhd/CERISE/spatial-verif/pre-processing/zarr-data
-INI="2015-11-01"
-END="2015-12-31"
+INI="2016-01-01"
+END="2016-05-31"
 #CERISE
 #python dump_cerise.py $INI $END
 

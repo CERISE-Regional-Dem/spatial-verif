@@ -18,7 +18,7 @@ CONFIG=config-files/GridStatConfig_ims_vs_eraland
 
 # $GP $FC fcst.ps 'name="FSNOWC"; level="Z0";'
 for D in $(seq -w 1 15); do
-DATE=201511$D
+DATE=201605$D
 OB=$OBPATH/ims_${DATE}.nc
 FC=$FCPATH/eraland_${DATE}.nc
 echo $OB
