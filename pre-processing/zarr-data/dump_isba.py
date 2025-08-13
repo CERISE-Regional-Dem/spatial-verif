@@ -7,7 +7,7 @@ import re
 import os
 
 """
-Create a CARRA-like NetCDF from an ISBA SURFOUT file without reading a template.
+Create a CARRA-like NetCDF from the SURFOUT file dumping the variable DSN_T_ISBA
 - Use integer dimensions y, x with 1D coordinate variables
 - Provide data variable bin_snow(y, x)
 - Provide 2D auxiliary variables x_2d(y,x) and y_2d(y,x) for actual coordinates
@@ -23,7 +23,7 @@ Usage:
 input_file = str(sys.argv[1])
 output_path = str(sys.argv[2])
 
-# Load ISBA
+# Load the file that contains DSN_T_ISBA data from 
 isba = xr.open_dataset(input_file)
 
 # Helper: timestamp from path
@@ -55,11 +55,11 @@ def extract_timestamp_from_path(file_path):
 # Determine native grid dims and build CARRA-like y/x
 # ISBA often uses (yy, xx). Rename to internal y/x to work easily
 work = isba
-if 'yy' in work.dims and 'xx' in work.dims:
+if 'yy' in work.sizes and 'xx' in work.sizes:
     work = work.rename({'yy': 'y', 'xx': 'x'})
 
-ny = work.dims.get('y') or list(work.dims.values())[0]
-nx = work.dims.get('x') or list(work.dims.values())[1]
+ny = work.sizes.get('y') or list(work.sizes.values())[0]
+nx = work.sizes.get('x') or list(work.sizes.values())[1]
 
 # Build bin_snow from DSN_T_ISBA
 if 'DSN_T_ISBA' not in work.variables:
