@@ -1,208 +1,200 @@
 import xarray as xr
 import numpy as np
-import cartopy.crs as ccrs
-import pyproj
-import pyresample
 import datetime
 import pandas as pd
 import sys
 import re
 import os
 
-# Example usage: python dump_isba.py /path/to/SURFOUT.20180628_03h00.nc
+"""
+Create a CARRA-like NetCDF from an ISBA SURFOUT file without reading a template.
+- Use integer dimensions y, x with 1D coordinate variables
+- Provide data variable bin_snow(y, x)
+- Provide 2D auxiliary variables x_2d(y,x) and y_2d(y,x) for actual coordinates
+- Provide 1D coordinate variables x(x) and y(y) for dimension coordinates
+- Provide a scalar 'crs' variable with LCC attributes (typical for CARRA Greenland)
+- Populate global attributes sensibly
 
-input_file = str(sys.argv[1])  # Full path to the input NetCDF file
-output_path = str(sys.argv[2])  # Path of the output files
+Usage:
+    python dump_isba_to_carra_like.py /path/to/SURFOUT.YYYYMMDD_HHhMM.nc /output/path
+"""
 
-# Open the NetCDF file
-isba_analysis = xr.open_dataset(input_file)
+# Args
+input_file = str(sys.argv[1])
+output_path = str(sys.argv[2])
 
+# Load ISBA
+isba = xr.open_dataset(input_file)
+
+# Helper: timestamp from path
 def extract_timestamp_from_path(file_path):
-    """
-    Extract timestamp from file path pattern like:
-      /.../YYYY/MM/DD/HH/MMM/SURFOUT.YYYYMMDD_HHhMM.nc
-    Returns: YYYYMMDD + initHH + forecastHH + forecastMM
-      e.g., 20180628 + 00 + 03 + 00 -> 20180628000300
-    If path is different, falls back to filename-only parsing (initHH assumed 00).
-    """
     try:
-        # Extract components from the path
         path_parts = file_path.split('/')
-
-        # Find the date components in the path (YYYY/MM/DD/HH)
         year = month = day = init_hour = None
         for i, part in enumerate(path_parts):
-            if len(part) == 4 and part.isdigit() and 2000 <= int(part) <= 2100:  # Year folder
+            if len(part) == 4 and part.isdigit() and 2000 <= int(part) <= 2100:
                 year = part
                 if i + 3 < len(path_parts):
                     month = path_parts[i + 1]
                     day = path_parts[i + 2]
                     init_hour = path_parts[i + 3]
                 break
-
-        # Extract forecast hour and minutes from filename
         filename = os.path.basename(file_path)
-        # Matches _03h00.nc -> groups: 03, 00
-        forecast_match = re.search(r'_(\d{2})h(\d{2})\.nc$', filename)
-
-        if year and month and day and init_hour and forecast_match:
-            forecast_hour = forecast_match.group(1)  # two digits
-            forecast_min = forecast_match.group(2)   # two digits
-
-            # If you prefer YYYYMMDD + initHH + forecastHH (no minutes), drop forecast_min below
-            #timestamp = f"{year}{month.zfill(2)}{day.zfill(2)}{init_hour.zfill(2)}{forecast_hour.zfill(2)}{forecast_min.zfill(2)}"
-            timestamp = f"{year}{month}{day}{init_hour}{forecast_hour}"
-            return timestamp
-        else:
-            # Fallback: try to extract from filename only
-            filename_match = re.search(r'SURFOUT\.(\d{8})_(\d{2})h(\d{2})\.nc$', filename)
-            if filename_match:
-                date_part = filename_match.group(1)   # YYYYMMDD
-                hour_part = filename_match.group(2)   # HH
-                min_part = filename_match.group(3)    # MM
-                # No init hour in filename -> assume 00
-                timestamp = f"{date_part}00{hour_part.zfill(2)}{min_part.zfill(2)}"
-                return timestamp
-
+        m = re.search(r'_(\d{2})h(\d{2})\.nc$', filename)
+        if year and month and day and init_hour and m:
+            fh, fm = m.group(1), m.group(2)
+            return f"{year}{month}{day}{init_hour}{fh}{fm}"
+        m2 = re.search(r'SURFOUT\.(\d{8})_(\d{2})h(\d{2})\.nc$', filename)
+        if m2:
+            d, h, mm = m2.groups()
+            return f"{d}00{h}{mm}"
     except Exception as e:
-        print(f"Warning: Could not extract timestamp from path: {e}")
-
+        print(f"Warning: Could not extract timestamp: {e}")
     return None
 
-# Create the 'bin_snow' variable based on 'DSN_T_ISBA'
-isba_subset = isba_analysis.copy()
-isba_subset["bin_snow"] = xr.where(isba_subset["DSN_T_ISBA"] > 0.01, 1, 0)
+# Determine native grid dims and build CARRA-like y/x
+# ISBA often uses (yy, xx). Rename to internal y/x to work easily
+work = isba
+if 'yy' in work.dims and 'xx' in work.dims:
+    work = work.rename({'yy': 'y', 'xx': 'x'})
 
-# Rename the primary grid dimensions to CF-friendly names
-# Original dims are 'yy' and 'xx' in your file (order: (yy, xx))
-if 'yy' in isba_subset.dims and 'xx' in isba_subset.dims:
-    isba_subset = isba_subset.rename({'yy': 'y', 'xx': 'x'})
+ny = work.dims.get('y') or list(work.dims.values())[0]
+nx = work.dims.get('x') or list(work.dims.values())[1]
 
-# Build 1D x and y coordinate variables from the 2D XX/YY if available
-# This helps programs that expect 1D CF coordinates with the proper standard_name.
-if 'XX' in isba_subset and 'YY' in isba_subset:
-    try:
-        # XX and YY are (y, x). Derive 1D x from first row and 1D y from first column.
-        x_1d = xr.DataArray(isba_subset['XX'].isel(y=0).values, dims=('x',))
-        y_1d = xr.DataArray(isba_subset['YY'].isel(x=0).values, dims=('y',))
+# Build bin_snow from DSN_T_ISBA
+if 'DSN_T_ISBA' not in work.variables:
+    raise ValueError("Expected variable 'DSN_T_ISBA' not found in input file")
 
-        # Assign as coordinate variables named 'x' and 'y'
-        isba_subset = isba_subset.assign_coords({'x': x_1d, 'y': y_1d})
-    except Exception as e:
-        print(f"Warning: Could not derive 1D x/y from XX/YY: {e}")
+bin_snow = xr.where(work['DSN_T_ISBA'] > 0.01, 1, 0).astype('int64')
 
-def dump_subset(subset_ds, output_file='binary_snow_classification_isba.nc'):
-    # Keep the snow classification and ensure we have the 1D x/y coords present.
-    keep_vars = ['bin_snow']
-    if 'x' in subset_ds.coords:
-        keep_vars.append('x')
-    if 'y' in subset_ds.coords:
-        keep_vars.append('y')
+# Create output Dataset with proper dimensions and coordinate variables
+out = xr.Dataset()
 
-    # Optionally keep 2D XX/YY as auxiliary if you want
-    if 'XX' in subset_ds:
-        keep_vars.append('XX')
-    if 'YY' in subset_ds:
-        keep_vars.append('YY')
+# Create 1D coordinate variables for dimensions
+# These will be simple indices or regular grid coordinates
+if 'XX' in work.variables and 'YY' in work.variables:
+    XX = work['XX'].values
+    YY = work['YY'].values
+    # Try to extract 1D coordinates from 2D arrays if they're regular
+    x_1d = XX[0, :] if XX.ndim == 2 else XX
+    y_1d = YY[:, 0] if YY.ndim == 2 else YY
+else:
+    # Create regular 1D coordinate arrays
+    dx = 1000.0  # 1 km spacing
+    dy = 1000.0
+    x0 = 0.0
+    y0 = 0.0
+    x_1d = x0 + np.arange(nx) * dx
+    y_1d = y0 + np.arange(ny) * dy
 
-    subset_ds = subset_ds[keep_vars]
+# Create the dataset with proper 1D coordinate variables
+out = out.assign_coords({
+    'x': ('x', x_1d.astype('float32')),
+    'y': ('y', y_1d.astype('float32'))
+})
 
-    # Ensure x/y are coordinates (not data variables)
-    coords_to_set = [c for c in ['x', 'y'] if c in subset_ds]
-    if coords_to_set:
-        subset_ds = subset_ds.set_coords(coords_to_set)
+# Attach the data
+out['bin_snow'] = (('y', 'x'), bin_snow.values)
 
-    # Add a dummy crs variable
-    subset_ds['crs'] = xr.DataArray(0, name='crs')
+# Create 2D auxiliary coordinate variables with different names
+# These store the actual 2D coordinate fields if needed
+if 'XX' in work.variables and 'YY' in work.variables:
+    XX = work['XX'].values
+    YY = work['YY'].values
+    # Ensure shapes match
+    if XX.shape != (ny, nx):
+        XX = np.broadcast_to(XX, (ny, nx))
+    if YY.shape != (ny, nx):
+        YY = np.broadcast_to(YY, (ny, nx))
+else:
+    # Create 2D meshgrid from 1D coordinates
+    XX, YY = np.meshgrid(x_1d, y_1d)
 
-    # Add CF-1.7 compliant attributes for projected coordinates
-    if 'x' in subset_ds.coords:
-        subset_ds['x'].attrs = {
-            'standard_name': 'projection_x_coordinate',
-            'long_name': 'x coordinate of projection',
-            'units': 'm',
-            'axis': 'X',
-            'grid_mapping': 'crs'
-        }
+# Add 2D auxiliary coordinates with different names to avoid conflict
+out['x_2d'] = (('y', 'x'), XX.astype('float32'))
+out['y_2d'] = (('y', 'x'), YY.astype('float32'))
 
-    if 'y' in subset_ds.coords:
-        subset_ds['y'].attrs = {
-            'standard_name': 'projection_y_coordinate',
-            'long_name': 'y coordinate of projection',
-            'units': 'm',
-            'axis': 'Y',
-            'grid_mapping': 'crs'
-        }
+# Add a scalar CRS variable with typical CARRA LCC parameters
+out['crs'] = xr.DataArray(0, attrs={
+    'grid_mapping_name': 'lambert_conformal_conic',
+    'latitude_of_projection_origin': 80.0,
+    'standard_parallel': [80.0, 80.0],
+    'longitude_of_central_meridian': -34.0,
+    'false_easting': 0.0,
+    'false_northing': 0.0,
+    'semi_major_axis': 6371000.0,
+    'proj_string': '+R=6371000 +lat_0=80 +lat_1=80 +lat_2=80 +lon_0=-34 +no_defs +proj=lcc +type=crs +units=m +x_0=0 +y_0=0',
+})
 
-    # If keeping auxiliary 2D coordinates, keep their attrs lightweight
-    if 'XX' in subset_ds:
-        subset_ds['XX'].attrs = {
-            'long_name': 'x coordinate (2D auxiliary)',
-            'units': 'm',
-            'grid_mapping': 'crs'
-        }
-    if 'YY' in subset_ds:
-        subset_ds['YY'].attrs = {
-            'long_name': 'y coordinate (2D auxiliary)',
-            'units': 'm',
-            'grid_mapping': 'crs'
-        }
+# Attributes for data variable
+out['bin_snow'].attrs.update({
+    'standard_name': 'binary_snow_classification',
+    'long_name': 'Binary classification of snow presence from ISBA',
+    'units': '1',
+    'valid_min': np.int64(0),
+    'valid_max': np.int64(1),
+    'grid_mapping': 'crs',
+    'coordinates': 'x_2d y_2d',  # Point to the 2D auxiliary coordinates
+})
 
-    # Add attributes for bin_snow
-    subset_ds['bin_snow'].attrs.update({
-        'standard_name': 'binary_snow_classification',
-        'long_name': 'Binary classification of snow presence from ISBA',
-        'units': '1',  # dimensionless
-        'valid_min': 0,
-        'valid_max': 1,
-        'grid_mapping': 'crs'
-    })
+# Attributes for 1D coordinate variables
+out['x'].attrs.update({
+    'standard_name': 'projection_x_coordinate',
+    'long_name': 'x coordinate of projection',
+    'units': 'm',
+    'axis': 'X',
+})
 
-    # Add proper CRS attributes (adjust if your true projection differs)
-    subset_ds['crs'].attrs = {
-        'grid_mapping_name': 'lambert_conformal_conic',
-        'latitude_of_projection_origin': 80.0,
-        'standard_parallel': [80.0, 80.0],
-        'longitude_of_central_meridian': -34.0,
-        'false_easting': 0.0,
-        'false_northing': 0.0,
-        'semi_major_axis': 6371000.0,
-        'proj_string': '+R=6371000 +lat_0=80 +lat_1=80 +lat_2=80 +lon_0=-34 +no_defs +proj=lcc +type=crs +units=m +x_0=0 +y_0=0',
-    }
+out['y'].attrs.update({
+    'standard_name': 'projection_y_coordinate',
+    'long_name': 'y coordinate of projection',
+    'units': 'm',
+    'axis': 'Y',
+})
 
-    # Global attributes
-    subset_ds.attrs.update({
-        'Conventions': 'CF-1.7',
-        'title': 'Binary Snow from ISBA',
-        'institution': 'Unknown',
-        'source': 'ISBA model output',
-        'history': f'Created on {datetime.datetime.now().strftime("%Y-%m-%d")} from {input_file}',
-    })
+# Attributes for 2D auxiliary coordinate variables
+out['x_2d'].attrs.update({
+    'standard_name': 'projection_x_coordinate',
+    'long_name': '2D x coordinate of projection',
+    'units': 'm',
+})
 
-    # Write to netCDF file
-    encoding = {
-        'bin_snow': {'zlib': True, 'complevel': 4}
-    }
-    if 'x' in subset_ds.coords:
-        encoding['x'] = {'zlib': True, 'complevel': 4}
-    if 'y' in subset_ds.coords:
-        encoding['y'] = {'zlib': True, 'complevel': 4}
-    subset_ds = subset_ds.rename({'XX': 'X', 'YY': 'Y'})
-    subset_ds.to_netcdf(output_file, format='NETCDF4', encoding=encoding)
-    print(f"Created file: {output_file}")
+out['y_2d'].attrs.update({
+    'standard_name': 'projection_y_coordinate',
+    'long_name': '2D y coordinate of projection',
+    'units': 'm',
+})
 
-# Generate output filename based on file path timestamp
+# Global attributes
+out.attrs.update({
+    'Conventions': 'CF-1.7',
+    'title': 'Binary Snow from ISBA (CARRA-like grid, no template)',
+    'institution': 'Unknown',
+    'source': 'ISBA model output',
+    'history': f'Created on {datetime.datetime.now().strftime("%Y-%m-%d")} from {input_file}',
+})
+
+# Encoding and writing
+encoding = {
+    'bin_snow': {'zlib': True, 'complevel': 4},
+    'x': {'zlib': True, 'complevel': 4},
+    'y': {'zlib': True, 'complevel': 4},
+    'x_2d': {'zlib': True, 'complevel': 4, '_FillValue': np.float32(np.nan)},
+    'y_2d': {'zlib': True, 'complevel': 4, '_FillValue': np.float32(np.nan)},
+}
+
+# Name the file
 timestamp = extract_timestamp_from_path(input_file)
 if timestamp:
-    output_filename = f"isba_{timestamp}.nc"
+    out_name = f"isba_binnary_{timestamp[:-2]}.nc" if len(timestamp) >= 12 else f"isba_binnary_{timestamp}.nc"
 else:
-    # Fallback to original logic if Dataset has 'time'
-    output_filename = "isba_binned.nc"
-    if hasattr(isba_subset, 'time'):
-        try:
-            time_str = pd.to_datetime(isba_subset.time.values[0]).strftime('%Y%m%d')
-            output_filename = f"isba_{time_str}.nc"
-        except Exception:
-            pass
-output_filename = os.path.join(output_path,output_filename)
-dump_subset(isba_subset, output_filename)
+    out_name = "isba_binnary.nc"
+
+out_path = os.path.join(output_path, out_name)
+
+# Write to NetCDF
+out.to_netcdf(out_path, format='NETCDF4', encoding=encoding)
+print(f"Created file: {out_path}")
+
+# Close
+isba.close()
