@@ -18,6 +18,8 @@ END="2018-06-30"
 
 #eraland
 #python dump_eraland.py $INI $END
-
-python dump_isba.py /ec/res4/hpcperm/nhd/verification/CERISE/amsr2_test/2018/06/01/09/000/SURFOUT.20180601_12h00.nc
+for day in $(seq -w 0 30); do
+#python dump_isba.py /ec/res4/hpcperm/nhd/verification/CERISE/amsr2_test/2018/06/30/00/000/SURFOUT.20180630_03h00.nc
+python dump_isba.py /ec/res4/hpcperm/nhd/verification/CERISE/amsr2_test/2018/06/$day/00/000/SURFOUT.201806${day}_03h00.nc
+done
 
