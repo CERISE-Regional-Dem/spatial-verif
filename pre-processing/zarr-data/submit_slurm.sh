@@ -6,8 +6,8 @@
 source /ec/res4/scratch/nhd/CERISE/cerise_snow_verif/.venv/bin/activate
 
 cd /ec/res4/scratch/nhd/CERISE/spatial-verif/pre-processing/zarr-data
-INI="2016-01-01"
-END="2016-05-31"
+INI="2018-06-01"
+END="2018-06-30"
 #CERISE
 #python dump_cerise.py $INI $END
 
@@ -17,5 +17,7 @@ END="2016-05-31"
 #python dump_ims.py $INI $END
 
 #eraland
-python dump_eraland.py $INI $END
+#python dump_eraland.py $INI $END
+
+python dump_isba.py /ec/res4/hpcperm/nhd/verification/CERISE/amsr2_test/2018/06/01/09/000/SURFOUT.20180601_12h00.nc
 

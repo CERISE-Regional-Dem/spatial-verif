@@ -1,61 +1,51 @@
-
 import xarray as xr
 import numpy as np
-
 import cartopy.crs as ccrs
 import pyproj
 import pyresample
 import datetime
-
 import pandas as pd
-
 import sys
 
 # This script is adapted from dump_cerise.py to handle ISBA data.
-# Example usage: python dump_isba.py /path/to/your/@SURFOUT.20180601_12h00.nc
+# Example usage: python dump_isba.py /path/to/your/SURFOUT.20180601_12h00.nc
 
-input_file = str(sys.argv[1]) # Full path to the input NetCDF file
+input_file = str(sys.argv[1])  # Full path to the input NetCDF file
 
 # Open the NetCDF file
 isba_analysis = xr.open_dataset(input_file)
 
-# In dump_cerise.py, 'hxa' was used. Here we use 'DSN_T_ISBA'.
 # Create the 'bin_snow' variable based on 'DSN_T_ISBA'
-# The logic is the same as in dump_cerise.py: snow presence if value > 0.01
-isba_subset = isba_analysis.copy() # Create a copy to avoid modifying the original dataset
-isba_subset["bin_snow"]  = xr.where(isba_subset["DSN_T_ISBA"] > 0.01, 1, 0)  
+isba_subset = isba_analysis.copy()
+isba_subset["bin_snow"] = xr.where(isba_subset["DSN_T_ISBA"] > 0.01, 1, 0)
 
-def dump_subset(subset_ds,output_file = 'binary_snow_classification_isba.nc'):
-    # Select only the variables we want to keep
-    # Assuming DSN_T_ISBA is on a lat/lon grid, but we will add projection info
-    # to match the cerise data.
-    subset_ds = subset_ds[['bin_snow', 'latitude', 'longitude']]
+def dump_subset(subset_ds, output_file='binary_snow_classification_isba.nc'):
+    # The file uses projected coordinates XX, YY instead of lat/lon
+    # We need to work with the existing coordinate system
     
-    # Rename for consistency if needed, assuming 'latitude' and 'longitude' exist
-    if 'latitude' in subset_ds.coords and 'longitude' in subset_ds.coords:
-        subset_ds = subset_ds.rename({'latitude': 'lat', 'longitude': 'lon'})
-
-    # Add a dummy crs variable that we will populate with attributes
+    # Select the variables we want to keep, using the actual coordinate names
+    subset_ds = subset_ds[['bin_snow', 'XX', 'YY']]
+    
+    # Rename coordinates to match expected names
+    subset_ds = subset_ds.rename({'XX': 'x', 'YY': 'y', 'xx': 'x_dim', 'yy': 'y_dim'})
+    
+    # Add a dummy crs variable
     subset_ds['crs'] = xr.DataArray(0, name='crs')
-
-    # Add CF-1.7 compliant attributes for coordinates
-    subset_ds['lat'].attrs = {
-        'standard_name': 'latitude',
-        'long_name': 'latitude',
-        'units': 'degrees_north',
-        'axis': 'Y',
-        'valid_min': -90.0,
-        'valid_max': 90.0,
+    
+    # Add CF-1.7 compliant attributes for projected coordinates
+    subset_ds['x'].attrs = {
+        'standard_name': 'projection_x_coordinate',
+        'long_name': 'x coordinate of projection',
+        'units': 'm',  # assuming meters for projected coordinates
+        'axis': 'X',
         'grid_mapping': 'crs'
     }
     
-    subset_ds['lon'].attrs = {
-        'standard_name': 'longitude',
-        'long_name': 'longitude',
-        'units': 'degrees_east',
-        'axis': 'X',
-        'valid_min': -180.0,
-        'valid_max': 180.0,
+    subset_ds['y'].attrs = {
+        'standard_name': 'projection_y_coordinate', 
+        'long_name': 'y coordinate of projection',
+        'units': 'm',  # assuming meters for projected coordinates
+        'axis': 'Y',
         'grid_mapping': 'crs'
     }
     
@@ -69,7 +59,8 @@ def dump_subset(subset_ds,output_file = 'binary_snow_classification_isba.nc'):
         'grid_mapping': 'crs'
     })
     
-    # Add proper CRS attributes, assuming same projection as cerise
+    # Add proper CRS attributes based on the file's projection info
+    # You may need to adjust these based on your actual projection
     subset_ds['crs'].attrs = {
         'grid_mapping_name': 'lambert_conformal_conic',
         'latitude_of_projection_origin': 80.0,
@@ -85,7 +76,7 @@ def dump_subset(subset_ds,output_file = 'binary_snow_classification_isba.nc'):
     subset_ds.attrs.update({
         'Conventions': 'CF-1.7',
         'title': 'Binary Snow from ISBA',
-        'institution': 'Unknown', # Please fill in
+        'institution': 'Unknown',
         'source': 'ISBA model output',
         'history': f'Created on {datetime.datetime.now().strftime("%Y-%m-%d")} from {input_file}',
     })
@@ -93,25 +84,19 @@ def dump_subset(subset_ds,output_file = 'binary_snow_classification_isba.nc'):
     # Write to netCDF file
     subset_ds.to_netcdf(output_file, format='NETCDF4', encoding={
         'bin_snow': {'zlib': True, 'complevel': 4},
-        'lat': {'zlib': True, 'complevel': 4},
-        'lon': {'zlib': True, 'complevel': 4},
+        'x': {'zlib': True, 'complevel': 4},
+        'y': {'zlib': True, 'complevel': 4},
     })
     
     print(f"Created file: {output_file}")
 
-# For now, this script processes the whole file at once.
-# If the file has a time dimension, you might want to loop over it like in dump_cerise.py
-# This is a simplified version assuming a single time slice or time-independent data.
-
-# Generate an output filename based on the input
-output_filename = "isba_binned.nc"
+# Generate output filename
+output_filename = "isba_binary.nc"
 if hasattr(isba_subset, 'time'):
-    # If there is a time dimension, use the first time step for the filename
     try:
         time_str = pd.to_datetime(isba_subset.time.values[0]).strftime('%Y%m%d')
         output_filename = f"isba_{time_str}.nc"
     except:
         pass
-
 
 dump_subset(isba_subset, output_filename)
