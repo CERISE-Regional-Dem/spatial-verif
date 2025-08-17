@@ -17,6 +17,10 @@ END="2018-09-30"
 #IMS
 #python dump_ims.py $INI $END
 
+python fix_dump.py
+
+exit
+
 #eraland
 #python dump_eraland.py $INI $END
 MM=09
