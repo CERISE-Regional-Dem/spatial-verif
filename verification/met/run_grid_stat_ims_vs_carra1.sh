@@ -30,17 +30,18 @@ GP=/perm/nhd/MET/bin/plot_data_plane
 FCPATH=/ec/res4/scratch/nhd/CERISE/CARRA1/from_zarr
 OBPATH=/ec/res4/scratch/nhd/CERISE/IMS_snow_cover/from_zarr
 OUTPUT_DIR=/ec/res4/scratch/nhd/CERISE/MET_CARRA1_vs_IMS_winter_2015
+OUTPUT_DIR=/ec/res4/scratch/nhd/CERISE/MET_CARRA1_vs_IMS_paper
 CONFIG=config-files/GridStatConfig_ims_vs_carra1
 
 [ ! -d $OUTPUT_DIR ] && mkdir -p $OUTPUT_DIR
 
 # $GP $FC fcst.ps 'name="FSNOWC"; level="Z0";'
-for YYYY in 2015; do
+for YYYY in 2015 2016 2017 2018 2019; do
 
 if [[ $YYYY -lt 2016 ]]; then
-MONTHS="11 12"
+MONTHS="09 10 11 12"
 else
-MONTHS="$(seq -w 01 05)"
+MONTHS="$(seq -w 1 12)"
 fi
 for MM in ${MONTHS}; do
 PERIOD=$YYYY${MM}

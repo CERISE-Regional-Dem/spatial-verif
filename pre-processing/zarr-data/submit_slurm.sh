@@ -6,16 +6,18 @@
 source /ec/res4/scratch/nhd/CERISE/cerise_snow_verif/.venv/bin/activate
 OUTDIR=/ec/res4/scratch/nhd/CERISE/amsr2_test
 cd /ec/res4/scratch/nhd/CERISE/spatial-verif/pre-processing/zarr-data
-INI="2018-09-01"
-END="2018-09-30"
+INI="2015-12-01"
+END="2019-08-01"
 #CERISE
-#python dump_cerise.py $INI $END
+python dump_cerise.py $INI $END
 
 #CARRA1
-#python dump_carra1.py $INI $END
+python dump_carra1.py $INI $END
 
 #IMS
-#python dump_ims.py $INI $END
+python dump_ims.py $INI $END
+
+exit
 
 #IMS DATA
 #python ims_correct_projection.py $INI $END $OUTDIR
