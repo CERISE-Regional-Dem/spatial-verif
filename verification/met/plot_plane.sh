@@ -14,13 +14,14 @@ OUT=ISBA_ims.ps
 OUT=ISBA_20180901_version1.ps
 OUT=ISBA_201809091_original_nc.ps
 OUT=IMS_20180930.ps
-OUT=ISBA_20180930.ps
+OUT=CRYO_20151201.ps
 #
 FILE=/ec/res4/scratch/nhd/CERISE/spatial-verif/pre-processing/zarr-data/ims_amsr2_20180930.nc
 FILE=/ec/res4/scratch/nhd/CERISE/spatial-verif/pre-processing/zarr-data/SURFOUT.20180930_03h00_bin_snow.nc
-$DP $FILE $OUT 'name="bin_snow"; level="(0,*,*)"; file_type = NETCDF_NCCF;' -v 6
+FILE=/ec/res4/scratch/nhd/CERISE/CRYO_resampled/classed_value_regridded_20151201.nc
+#$DP $FILE $OUT 'name="bin_snow"; level="(0,*,*)"; file_type = NETCDF_NCCF;' -v 6
 #$DP $FILE $OUT 'name="bin_snow"; level="(0,*,*)"; file_type = NETCDF_NCCF;' -v 6
 #$DP $FILE $OUT 'name="DSN_T_ISBA"; level="(*,*)"; file_type = NETCDF_NCCF;' -v 6
-#$DP $FILE $OUT 'name="bin_snow"; level="(*,*)"; file_type = NETCDF_NCCF;' -v 6
+$DP $FILE $OUT 'name="classed_value"; level="(*,*)"; file_type = NETCDF_NCCF;' -v 6
 #$DP  masked_north.nc masked_north.ps 'name="NORTH"; level="(*,*)";' -v 6
 #$DP $FILE $OUT 'name="binary_snow_cover"; level="(0,*,*)"; file_type = NETCDF_NCCF;' -v 6
