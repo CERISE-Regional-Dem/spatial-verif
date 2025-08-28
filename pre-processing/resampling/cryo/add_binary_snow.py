@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Script to add a binary snow variable to NetCDF files and preserve time dimension.
-Creates bin_snow = 1 where prob_snow >= 80, else 0.
+Creates bin_snow = 1 where prob_snow >= 80.0, else 0.
 Also copies time dimension and variable from original file if available.
 """
 
@@ -10,7 +10,7 @@ import numpy as np
 import netCDF4 as nc
 from pathlib import Path
 
-def add_binary_snow_with_time(input_file, output_file=None, threshold=80., original_file=None):
+def add_binary_snow_with_time(input_file, output_file=None, threshold=80.0, original_file=None,classed_file=None):
     """
     Add binary snow variable to NetCDF file and preserve time dimension.
     
@@ -36,6 +36,24 @@ def add_binary_snow_with_time(input_file, output_file=None, threshold=80., origi
     print(f"Threshold: {threshold}")
     if original_file:
         print(f"Original file for time: {original_file}")
+    if classed_file:
+        print(f"Regridded classed value file: {classed_file}")
+    
+    # Read classed_value data from regridded file if provided
+    classed_data = None
+    if classed_file and Path(classed_file).exists():
+        try:
+            with nc.Dataset(classed_file, 'r') as classed_nc:
+                if 'classed_value' in classed_nc.variables:
+                    classed_data = classed_nc.variables['classed_value'][:]
+                    print(f"Found classed_value with shape: {classed_data.shape}")
+                    print(f"Classed_value unique values: {np.unique(classed_data[~np.isnan(classed_data)])}")
+                else:
+                    print("Warning: classed_value variable not found in regridded classed file")
+        except Exception as e:
+            print(f"Warning: Could not read classed_value from regridded file: {e}")
+    else:
+        print("Warning: Classed file not provided or does not exist")
     
     # Read time information from original file if provided
     time_var_data = None
@@ -118,25 +136,50 @@ def add_binary_snow_with_time(input_file, output_file=None, threshold=80., origi
             
             # Create bin_snow variable
             bin_snow_var = dst.createVariable(
-                'bin_snow', 'i1', bin_snow_dims,  # int8 type
-                fill_value=-1  # Use -1 for missing data
+                'bin_snow', 'i2', bin_snow_dims,  # int16 type to accommodate -9999
+                fill_value=-9999  # Use -9999 for fill value as requested
             )
             
             # Set attributes for bin_snow
             bin_snow_var.long_name = "Binary snow cover flag"
-            bin_snow_var.description = f"Binary flag: 1 where prob_snow >= {threshold}, 0 otherwise"
+            if classed_data is not None:
+                bin_snow_var.description = f"Binary flag: 1 where prob_snow >= {threshold} AND classed_value != 4, -9999 where classed_value == 4, 0 otherwise"
+            else:
+                bin_snow_var.description = f"Binary flag: 1 where prob_snow >= {threshold}, 0 otherwise"
             bin_snow_var.units = "1"
             if 'grid_mapping' in src.variables['prob_snow'].ncattrs():
                 bin_snow_var.grid_mapping = src.variables['prob_snow'].grid_mapping
-            bin_snow_var.valid_range = np.array([0, 1], dtype='i1')
+            bin_snow_var.valid_range = np.array([0, 1], dtype='i2')
             
             # Calculate binary snow
-            # Handle NaN values in prob_snow
-            bin_snow_data = np.full_like(prob_snow, -1, dtype='i1')  # Initialize with fill value
+            # Initialize with fill value
+            bin_snow_data = np.full_like(prob_snow, -9999, dtype='i2')
             
-            # Set valid data points
-            valid_mask = ~np.isnan(prob_snow)
-            bin_snow_data[valid_mask] = (prob_snow[valid_mask] >= threshold).astype('i1')
+            if classed_data is not None:
+                # Use classed_value for masking
+                # Set to fill value where classed_value == 4
+                fill_mask = (classed_data == 4)
+                
+                # Set valid data where classed_value != 4 and prob_snow is not NaN
+                valid_mask = (~np.isnan(prob_snow)) & (~fill_mask)
+                
+                # Set binary snow where conditions are met
+                snow_condition = (prob_snow >= threshold) & valid_mask
+                no_snow_condition = (prob_snow < threshold) & valid_mask
+                
+                bin_snow_data[snow_condition] = 1
+                bin_snow_data[no_snow_condition] = 0
+                # Fill values remain as -9999 where classed_value == 4
+                
+                print(f"Classed value masking statistics:")
+                print(f"  Pixels where classed_value == 4 (fill): {np.sum(fill_mask):,}")
+                print(f"  Valid pixels (classed_value != 4): {np.sum(valid_mask):,}")
+                
+            else:
+                # Original behavior when no classed_value file is provided
+                valid_mask = ~np.isnan(prob_snow)
+                bin_snow_data[valid_mask & (prob_snow >= threshold)] = 1
+                bin_snow_data[valid_mask & (prob_snow < threshold)] = 0
             
             # Write the data with appropriate dimensions
             if time_var_data is not None:
@@ -145,36 +188,40 @@ def add_binary_snow_with_time(input_file, output_file=None, threshold=80., origi
                 bin_snow_var[:] = bin_snow_data
             
             print(f"Binary snow statistics:")
-            valid_data = bin_snow_data[valid_mask]
-            snow_pixels = np.sum(valid_data == 1)
-            no_snow_pixels = np.sum(valid_data == 0)
-            total_valid = len(valid_data)
-            
-            print(f"  Total valid pixels: {total_valid:,}")
-            print(f"  Snow pixels (bin_snow=1): {snow_pixels:,} ({100*snow_pixels/total_valid:.1f}%)")
-            print(f"  No-snow pixels (bin_snow=0): {no_snow_pixels:,} ({100*no_snow_pixels/total_valid:.1f}%)")
-            print(f"  Missing data pixels: {np.sum(bin_snow_data == -1):,}")
+            # Calculate statistics only for non-fill values
+            non_fill_mask = (bin_snow_data != -9999)
+            if np.any(non_fill_mask):
+                valid_data = bin_snow_data[non_fill_mask]
+                snow_pixels = np.sum(valid_data == 1)
+                no_snow_pixels = np.sum(valid_data == 0)
+                total_valid = len(valid_data)
+                
+                print(f"  Total valid pixels: {total_valid:,}")
+                print(f"  Snow pixels (bin_snow=1): {snow_pixels:,} ({100*snow_pixels/total_valid:.1f}%)")
+                print(f"  No-snow pixels (bin_snow=0): {no_snow_pixels:,} ({100*no_snow_pixels/total_valid:.1f}%)")
+            print(f"  Fill value pixels (bin_snow=-9999): {np.sum(bin_snow_data == -9999):,}")
 
     print(f"\nSuccessfully created: {output_file}")
 
 def main():
     """Main function to handle command line arguments."""
     if len(sys.argv) < 2:
-        print("Usage: python add_binary_snow.py input_file.nc [output_file.nc] [threshold] [original_file.nc]")
+        print("Usage: python add_binary_snow.py input_file.nc [output_file.nc] [threshold] [original_file.nc] [classed_file.nc]")
         print("\nExamples:")
         print("  python add_binary_snow.py cryo_snow_regridded_20150908.nc")
         print("  python add_binary_snow.py input.nc output.nc")
         print("  python add_binary_snow.py input.nc output.nc 80.0")
-        print("  python add_binary_snow.py regridded.nc output.nc 80.0 original.nc")
+        print("  python add_binary_snow.py regridded.nc output.nc 80.0 original.nc classed_data_file.nc")
         sys.exit(1)
     
     input_file = sys.argv[1]
     output_file = sys.argv[2] if len(sys.argv) > 2 else None
     threshold = float(sys.argv[3]) if len(sys.argv) > 3 else 80.0
     original_file = sys.argv[4] if len(sys.argv) > 4 else None
+    classed_file = sys.argv[5] if len(sys.argv) > 5 else None
     
     try:
-        add_binary_snow_with_time(input_file, output_file, threshold, original_file)
+        add_binary_snow_with_time(input_file, output_file, threshold, original_file, classed_file)
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
