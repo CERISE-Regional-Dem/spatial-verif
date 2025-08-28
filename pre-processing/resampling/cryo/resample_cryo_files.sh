@@ -29,7 +29,7 @@ INDIR=/scratch/fab0/Projects/cerise/carra_snow_data/cryo
 for YYYY in 2015 2016 2017 2018 2019; do
 
 if [[ $YYYY -lt 2016 ]]; then
-MONTHS="10"
+MONTHS="12"
 else
 MONTHS="$(seq -w 1 12)"
 fi
@@ -85,7 +85,7 @@ ncrename -v Band1,classed_value classed_value_regridded.nc
 mv prob_snow_regridded.nc $OUTDIR/cryo_snow_regridded_${DATE}.nc
 mv classed_value_regridded.nc $OUTDIR/classed_value_regridded_${DATE}.nc
 #python3 add_binary_snow.py $OUTDIR/cryo_snow_regridded_${DATE}.nc $OUTDIR/bin_snow_cryo_${DATE}.nc
-python3 add_binary_snow_time.py $OUTDIR/cryo_snow_regridded_${DATE}.nc $OUTDIR/bin_snow_cryo_${DATE}.nc 80 ${INDIR}/snowcover_daily_${DATE}.nc
+python3 add_binary_snow.py $OUTDIR/cryo_snow_regridded_${DATE}.nc $OUTDIR/bin_snow_cryo_${DATE}.nc 0.8 ${INDIR}/snowcover_daily_${DATE}.nc #$OUTDIR/classed_value_regridded_${DATE}.nc
 done
 done
 done
