@@ -3,6 +3,7 @@ import numpy as np
 import json
 import datetime
 import sys
+FILL_VALUE = np.nan #-9999
 
 def reformat_cryo_file(input_file, output_file):
     """Reformat cryo file to be CF-compliant and MET-compatible"""
@@ -25,7 +26,25 @@ def reformat_cryo_file(input_file, output_file):
     })
     
     # Create binary snow variable: 1 if classed_value != 4, 0 otherwise
-    bin_snow_data = np.where(cryo.classed_value.values != 4, 1, 0)
+    #bin_snow_data = np.where(cryo.classed_value.values != 4, 1, 0)
+    bin_snow_data = np.where(cryo.prob_snow.values >= 80.0, 1, 0)
+
+    #bin_snow_data = np.where(
+    #(cryo.classed_value.values == -1) | (cryo.classed_value.values == 0),  # Ocean or nodata
+    #0, #FILL_VALUE,  # Fill value
+    #np.where(
+    #    (cryo.classed_value.values == 4),  # Cloud
+    #    0,  # No snow for clouds
+    #    np.where(
+    #        (cryo.classed_value.values == 2) & (cryo.prob_snow >= 80.0),  # Snow class
+    #        1,  # Snow = 1
+    #        0   # No snow (class 1) = 0
+    #    )
+    #)
+    #)
+
+
+
     new_cryo['bin_snow'] = (('time', 'y', 'x'), bin_snow_data)
     
     # Add lat/lon as data variables (not coordinates) for MET compatibility
@@ -127,7 +146,7 @@ def reformat_cryo_file(input_file, output_file):
     # Write to netCDF file
     new_cryo.to_netcdf(output_file, format='NETCDF4', encoding={
         'classed_value': {'zlib': True, 'complevel': 4},
-        'prob_snow': {'zlib': True, 'complevel': 4, '_FillValue': np.nan},
+        'prob_snow': {'zlib': True, 'complevel': 4, '_FillValue': FILL_VALUE},  #np.nan},
         'lat': {'zlib': True, 'complevel': 4},
         'lon': {'zlib': True, 'complevel': 4},
         'x': {'zlib': True, 'complevel': 4},

@@ -6,8 +6,8 @@
 source /ec/res4/scratch/nhd/CERISE/cerise_snow_verif/.venv/bin/activate
 OUTDIR=/ec/res4/scratch/nhd/CERISE/amsr2_test
 cd /lus/h2resw01/scratch/nhd/CERISE/spatial-verif/pre-processing/cryo
-INI="2015-11-01"
-END="2015-12-31"
+INI="2016-01-01"
+END="2016-12-31"
 #CRYO
 
 
@@ -31,9 +31,9 @@ maxday_month()
 }
 
 python dump_cerise_in_cryo_grid.py $INI $END
-exit
+python dump_carra1_in_cryo_grid.py $INI $END
 
-for YYYY in 2015; do
+for YYYY in 2016 2017 2018 2019; do
 if [[ $YYYY -lt 2016 ]]; then
 MONTHS="10 11 12"
 else
@@ -47,7 +47,7 @@ maxday_month
 for D in $(seq -w 1 $MAXDAY); do
 
   DATE=${PERIOD}$D
-  python reformat_cryo.py /scratch/fab0/Projects/cerise/carra_snow_data/cryo/snowcover_daily_${DATE}.nc snowcover_reformatted_${DATE}.nc
+  python reformat_cryo.py /scratch/fab0/Projects/cerise/carra_snow_data/cryo/snowcover_daily_${DATE}.nc snowcover_simple_${DATE}.nc
 
 done
 
