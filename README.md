@@ -6,7 +6,7 @@ Spatial verification scripts
 - [cdo](https://code.mpimet.mpg.de/projects/cdo)
 - [nco](https://nco.sourceforge.net/)
 - [Model Evaluation Tools](https://met.readthedocs.io/en/latest/Users_Guide/overview.html), using version 11.
-
+- [Apptainer](https://apptainer.org/) for using MET without need to compile the source code.
 
 
 ### Install python env (atos)

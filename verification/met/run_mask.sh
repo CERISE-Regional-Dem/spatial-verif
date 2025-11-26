@@ -14,3 +14,7 @@
 FILE=/ec/res4/scratch/nhd/CERISE/IMS_snow_cover/from_zarr/ims_20151101.nc
 #/perm/nhd/MET/bin/gen_vx_mask $FILE -type poly polygons/north_sweden.poly north_sweden_mask.nc
 /perm/nhd/MET/bin/gen_vx_mask $FILE -type poly polygons/north_part_only.poly north_part_mask.nc
+
+
+FILE=/ec/res4/scratch/nhd/CERISE/spatial-verif/pre-processing/cryo/snow_simple/snowcover_simple_20171107.nc
+/perm/nhd/MET/bin/gen_vx_mask $FILE -type poly polygons/polygon_for_cryo_scand.poly poly_cryo_scand.nc
