@@ -10,7 +10,7 @@ import sys
 import os
 from datetime import datetime, timezone
 import pyproj
-import pyresample
+#import pyresample
 import uuid
 
 def create_ims_projection_coords(nx, ny):
@@ -76,7 +76,7 @@ def parse_time_from_filename(filename):
     dt = datetime.strptime(f"{date_part}{hour.zfill(2)}", "%Y%m%d%H")
     return dt
 
-def create_cf_compliant_snow_dataset(input_file, output_file=None, use_ims_projection=False):
+def create_cf_compliant_snow_dataset(input_file, output_file=None):
     """
     Creates a CF-compliant NetCDF file extracting binary snow cover data 
     following CF conventions and model evaluation tool standards.
@@ -87,9 +87,8 @@ def create_cf_compliant_snow_dataset(input_file, output_file=None, use_ims_proje
         Path to input SURFEX NetCDF file
     output_file : str, optional
         Path to output NetCDF file
-    use_ims_projection : bool, default True
-        If True, uses IMS projection instead of original SURFEX projection
     """
+
     # Parse time from filename
     dt = parse_time_from_filename(input_file)
     print(f"Extracted time: {dt}")
@@ -101,65 +100,38 @@ def create_cf_compliant_snow_dataset(input_file, output_file=None, use_ims_proje
     snow_depth_threshold = 0.01  # meters
     bin_snow = xr.where(isba_analysis["DSN_T_ISBA"] > snow_depth_threshold, 1, 0)
     
-    if use_ims_projection:
-        # Use IMS projection (same as ims_amsr2_compliant.py)
-        #ny, nx = isba_analysis['XX'].shape
-        ny, nx = isba_analysis['yy'].shape[0], isba_analysis['xx'].shape[0]
-        x_coords, y_coords, dx = create_ims_projection_coords(nx, ny)
-        lons, lats = calculate_ims_lonlat_coords(x_coords, y_coords)
-        
-        # IMS projection parameters
-        lat0, lon0 = 80.0, -34.0
-        
-        # Create projection variable for CF grid mapping (IMS version)
-        proj_var = xr.DataArray(
-            data=np.array([], dtype='c'),  # Empty array for grid mapping variable
-            attrs={
-                'grid_mapping_name': 'lambert_conformal_conic',
-                'longitude_of_central_meridian': -34.0,
-                'latitude_of_projection_origin': 80.0,
-                'standard_parallel': [80.0, 80.0],
-                'false_easting': 0.0,
-                'false_northing': 0.0,
-                'semi_major_axis': 6371000.0,  # Sphere radius from IMS
-                'proj_string': '+R=6371000 +lat_0=80 +lat_1=80 +lat_2=80 +lon_0=-34 +no_defs +proj=lcc +type=crs +units=m +x_0=0 +y_0=0'
-            }
-        )
-        
-    else:
-        # Original SURFEX projection
-        lat0 = isba_analysis['LAT0'].item()
-        lon0 = isba_analysis['LON0'].item()
-        latc = isba_analysis["LATORI"].item()
-        lonc = isba_analysis["LONORI"].item()
-        #ny, nx = isba_analysis['XX'].shape
-        ny, nx = isba_analysis['yy'].shape[0], isba_analysis['xx'].shape[0]
-        DX = isba_analysis["DX"]
-        dx = DX[0][0].item()
-        
-        # Get area definition and longitude/latitude coordinates
-        area_def, proj_obj = sfx2areadef(lat0, lon0, latc, lonc, nx, ny, dx=dx, get_proj=True)
-        lons, lats = area_def.get_lonlats()
-        
-        # Grid coordinates (projection coordinates)
-        x_coords = np.arange(nx) * dx - (nx-1) * dx / 2
-        y_coords = np.arange(ny) * dx - (ny-1) * dx / 2
-        
-        # Create projection variable for CF grid mapping (original)
-        proj_var = xr.DataArray(
-            data=np.array([], dtype='c'),  # Empty array for grid mapping variable
-            attrs={
-                'grid_mapping_name': 'lambert_conformal_conic',
-                'longitude_of_central_meridian': lon0,
-                'latitude_of_projection_origin': lat0,
-                'standard_parallel': [lat0, lat0],  # Using same latitude for both standard parallels
-                'false_easting': 0.0,
-                'false_northing': 0.0,
-                'semi_major_axis': 6378137.0,  # WGS84 semi-major axis
-                'inverse_flattening': 298.257223563,  # WGS84 inverse flattening
-            }
-        )
+    # Hardcoded polar stereographic projection parameters
+    lat0 = 90.0
+    lon0 = -30.0
+    latc = 84.0
+    lonc = -45.0
+    nx = 2869
+    ny = 2869
+    dx = 2500.0
     
+    # Get area definition and longitude/latitude coordinates
+    area_def, proj_obj = sfx2areadef(lat0, lon0, latc, lonc, nx, ny, dx=dx, get_proj=True)
+    lons, lats = area_def.get_lonlats()
+    
+    # Grid coordinates (projection coordinates)
+    x_coords = np.arange(nx) * dx - (nx-1) * dx / 2
+    y_coords = np.arange(ny) * dx - (ny-1) * dx / 2
+    
+    # Create projection variable for CF grid mapping
+    proj_var = xr.DataArray(
+        data=np.array([], dtype='c'),
+        attrs={
+            'grid_mapping_name': 'polar_stereographic',
+            'straight_vertical_longitude_from_pole': lon0,
+            'latitude_of_projection_origin': lat0,
+            'standard_parallel': latc,
+            'false_easting': 0.0,
+            'false_northing': 0.0,
+            'semi_major_axis': 6378137.0,
+            'inverse_flattening': 298.257223563,
+        }
+    )
+
     # Define time reference for encoding
     time_reference = f"{dt.strftime('%Y-%m-%d %H:%M:%S')}"
     
@@ -233,13 +205,19 @@ def create_cf_compliant_snow_dataset(input_file, output_file=None, use_ims_proje
         }
     )
     
+    # Determine grid mapping name based on projection type
+    if lat0 == 90:
+        grid_mapping_name = 'polar_stereographic'
+    else:
+        grid_mapping_name = 'lambert_conformal_conic'
+    
     # Binary snow cover variable with comprehensive CF attributes
     bin_snow_var = xr.DataArray(
         data=bin_snow.values[np.newaxis, :, :],  # Add time dimension
         dims=['time', 'y', 'x'],
         attrs={
             'long_name': 'Binary snow cover indicator',
-            'standard_name': 'bin_snow',  # Note: This is not in CF standard names table
+            'standard_name': 'bin_snow',
             'units': '1',
             'valid_min': 0,
             'valid_max': 1,
@@ -247,7 +225,7 @@ def create_cf_compliant_snow_dataset(input_file, output_file=None, use_ims_proje
             'flag_meanings': 'no_snow snow',
             '_FillValue': -1,
             'missing_value': -1,
-            'grid_mapping': 'lambert_conformal_conic',
+            'grid_mapping': grid_mapping_name,
             'coordinates': 'longitude latitude',
             'cell_methods': 'time: point',
             'comment': f'Binary snow cover derived from snow depth with threshold {snow_depth_threshold} m. Value 1 indicates snow presence, 0 indicates no snow.',
@@ -269,7 +247,7 @@ def create_cf_compliant_snow_dataset(input_file, output_file=None, use_ims_proje
     ds = xr.Dataset(
         data_vars={
             'bin_snow': bin_snow_var,
-            'lambert_conformal_conic': proj_var,
+            grid_mapping_name: proj_var,
             'longitude': longitude_var,
             'latitude': latitude_var,
             'time_bnds': time_bounds,
@@ -279,9 +257,10 @@ def create_cf_compliant_snow_dataset(input_file, output_file=None, use_ims_proje
             'time': time_coord,
             'x': x_coord,
             'y': y_coord,
-            'nv': xr.DataArray([0, 1], dims=['nv'])  # Bounds dimension
+            'nv': xr.DataArray([0, 1], dims=['nv'])
         }
     )
+
     
     # Add comprehensive global attributes following CF and ACDD conventions
     creation_time = datetime.now(timezone.utc)
@@ -351,7 +330,7 @@ def create_cf_compliant_snow_dataset(input_file, output_file=None, use_ims_proje
         'license': 'Not specified - please check with data provider',
         
         # Grid information
-        'grid_mapping_name': 'lambert_conformal_conic',
+        'grid_mapping_name': grid_mapping_name,
         'projection_lat0': lat0,
         'projection_lon0': lon0,
         'grid_spacing_m': dx,
@@ -364,15 +343,15 @@ def create_cf_compliant_snow_dataset(input_file, output_file=None, use_ims_proje
         'dataset': 'SURFEX',
         'mip': 'local',
         'realm': 'land',
-        'frequency': 'fx',  # Fixed field
+        'frequency': 'fx',
         'modeling_realm': 'land',
         'table_id': 'fx',
         'variable_id': 'bin_snow',
-        'cf_standard_name': 'bin_snow',  # Custom standard name
+        'cf_standard_name': 'bin_snow',
         'cell_methods': 'time: point',
         'cell_measures': ''
     }
-    
+
     # Generate output filename if not provided
     if output_file is None:
         base_name = os.path.splitext(os.path.basename(input_file))[0]
@@ -426,12 +405,16 @@ def create_cf_compliant_snow_dataset(input_file, output_file=None, use_ims_proje
     print(f"Snow pixels: {np.sum(bin_snow.values)} / {len(x_coords)*len(y_coords)}")
     print(f"Longitude range: {lons.min():.2f} to {lons.max():.2f}")
     print(f"Latitude range: {lats.min():.2f} to {lats.max():.2f}")
-    print(f"Projection: Lambert Conformal Conic (lat0={lat0}, lon0={lon0})")
+    if lat0 == 90:
+        print(f"Projection: Polar Stereographic (lat0={lat0}, lon0={lon0}, latc={latc})")
+    else:
+        print(f"Projection: Lambert Conformal Conic (lat0={lat0}, lon0={lon0})")
     print(f"Grid spacing: {dx:.1f} m")
     print(f"CF Convention: {ds.attrs['Conventions']}")
     print(f"UUID: {unique_id}")
     
     return ds
+
 
 # Keep the rest of the functions unchanged (sfx2areadef, validate_cf_compliance, extract_to_csv)
 def sfx2areadef(lat0: float,
@@ -443,31 +426,61 @@ def sfx2areadef(lat0: float,
                 dx: tuple[int, float]=2500, 
                 get_proj: bool=False
                 ):
-    """Returns pyresample.geometry.AreaDefinition based on surfex domain.
+    """Returns projection object and calculates lon/lat coordinates for surfex domain.
     Supports both lcc and stere (if lat0 == 90)
     """
-    proj_type = "lcc" if lat0 < 90 else "stere"
-    proj_dict = {
-        "proj": proj_type,
-        "lat_0": lat0,
-        "lon_0": lon0,
-        "ellps": "WGS84",
-        "no_defs": True,
-        "units": "m",
-    }
-    if lat0 < 90:
-        proj_dict["lat_1"] = lat0
-        proj_dict["lat_2"] = lat0
+    if lat0 == 90:
+        proj_type = "stere"
+        proj_dict = {
+            "proj": proj_type,
+            "lat_0": lat0,
+            "lon_0": lon0,
+            "lat_ts": latc,
+            "ellps": "WGS84",
+            "no_defs": True,
+            "units": "m",
+        }
+    else:
+        proj_type = "lcc"
+        proj_dict = {
+            "proj": proj_type,
+            "lat_0": lat0,
+            "lon_0": lon0,
+            "lat_1": lat0,
+            "lat_2": lat0,
+            "ellps": "WGS84",
+            "no_defs": True,
+            "units": "m",
+        }
     
     p = pyproj.Proj(proj_dict, preserve_units=False)
     center = p(lonc, latc, inverse=False)
     ll = (center[0] - dx*nx/2, center[1] - dx*ny/2)
     extent = ll + (ll[0] + nx*dx, ll[1] + ny*dx)
-    area_def = pyresample.geometry.AreaDefinition("domain", "domain", proj_type, proj_dict, nx, ny, extent)
+    
+    # Create a simple object to hold area definition info
+    class AreaDef:
+        def __init__(self, proj, extent, nx, ny):
+            self.proj = proj
+            self.extent = extent
+            self.nx = nx
+            self.ny = ny
+        
+        def get_lonlats(self):
+            """Calculate lon/lat coordinates for the grid"""
+            x_coords = np.linspace(self.extent[0], self.extent[2], self.nx)
+            y_coords = np.linspace(self.extent[1], self.extent[3], self.ny)
+            X, Y = np.meshgrid(x_coords, y_coords)
+            lons, lats = self.proj(X, Y, inverse=True)
+            return lons, lats
+    
+    area_def = AreaDef(p, extent, nx, ny)
     
     if get_proj:
         return area_def, p
     return area_def
+
+
 
 def validate_cf_compliance(dataset):
     """
@@ -496,12 +509,13 @@ def validate_cf_compliance(dataset):
             checks.append(f"✗ Variable '{var_name}' missing units")
     
     print("\nCF Compliance Check:")
-    for check in checks[:10]:  # Show first 10 checks
+    for check in checks[:10]:
         print(f"  {check}")
     if len(checks) > 10:
         print(f"  ... and {len(checks)-10} more checks")
     
     return checks
+
 
 
 if __name__ == "__main__":
@@ -511,4 +525,4 @@ if __name__ == "__main__":
     
     input_path = sys.argv[1]
     output_path = sys.argv[2]
-    create_cf_compliant_snow_dataset(input_path, output_path, use_ims_projection=False)
+    create_cf_compliant_snow_dataset(input_path, output_path)
