@@ -16,6 +16,6 @@ echo $INPUT
 OUT=$(basename $INPUT)
 OUTPUT=$(basename $OUT .nc)_bin_snow.nc
 echo "Writing to $OUTPUT"
-python carra_land2_change_projection.py $INPUT $OUTDIR/$OUTPUT 
+python convert_carra2_land2_to_bin_snow.py $INPUT $OUTDIR/$OUTPUT 
 done
 
