@@ -7,6 +7,7 @@ import cartopy.feature as cfeature
 
 # Load the NetCDF file
 ds = xr.open_dataset('snowcover_daily_20151001.nc')
+ds = xr.open_dataset('snowcover_daily_20151222.nc')
 
 # Extract the data
 prob_snow = ds['prob_snow'].squeeze()  # Remove time dimension if single timestep
@@ -73,6 +74,8 @@ def create_geographic_plot():
     ax2 = plt.subplot(1, 2, 2, projection=proj)
     
     # Plot 1: Probability of Snow
+    import pdb
+    pdb.set_trace()
     im1 = ax1.pcolormesh(lon, lat, prob_snow, cmap='Blues', vmin=0, vmax=100, 
                         transform=ccrs.PlateCarree())
     ax1.add_feature(cfeature.COASTLINE)
@@ -95,7 +98,7 @@ def create_geographic_plot():
     plt.show()
 
 # Uncomment the line below to also create the geographic version
-# create_geographic_plot()
+create_geographic_plot()
 
 # Close the dataset
 ds.close()
