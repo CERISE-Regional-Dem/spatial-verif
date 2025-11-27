@@ -2,17 +2,6 @@
 #SBATCH --mem-per-cpu=64GB
 #SBATCH --time=48:00:00
 
-#activate python env
-source /ec/res4/scratch/nhd/CERISE/cerise_snow_verif/.venv/bin/activate
-OUTDIR=/ec/res4/scratch/nhd/CERISE/amsr2_test
-cd /lus/h2resw01/scratch/nhd/CERISE/spatial-verif/pre-processing/cryo
-INI="2015-11-01"
-END="2015-12-31"
-#CRYO
-
-
-
-
 maxday_month()
 {
     case ${MM} in
@@ -30,10 +19,41 @@ maxday_month()
     fi
 }
 
-python dump_cerise_in_cryo_grid.py $INI $END
+
+#activate python env
+source /ec/res4/scratch/nhd/CERISE/cerise_snow_verif/.venv/bin/activate
+OUTDIR=/ec/res4/scratch/nhd/CERISE/amsr2_test
+cd /lus/h2resw01/scratch/nhd/CERISE/spatial-verif/pre-processing/cryo
+INI="2016-01-01"
+END="2016-12-31"
+#CRYO
+#python analyse_cryo.py
+#exit
+
+
+for DATE in 20160503 20170529  20170608 20180509 20180204 20180218 20160222 20190206 20190204 20190203 20180219 20160125 20160122 20180122 20190202 20180202 20180130 20160107 20190130 20190201 20180129 20160108 20190129 20180203; do
+
+python dump_carra1_in_cryo_grid.py $DATE $DATE
+python dump_cerise_in_cryo_grid.py $DATE $DATE
+python reformat_cryo.py /scratch/fab0/Projects/cerise/carra_snow_data/cryo/snowcover_daily_${DATE}.nc snowcover_simple_${DATE}.nc
+
+done
 exit
 
-for YYYY in 2015; do
+
+
+#python dump_cerise_in_cryo_grid.py $INI $END
+#python dump_carra1_in_cryo_grid.py $INI $END
+#python dump_carra1_in_cryo_grid.py 20170529 20170530
+#python dump_cerise_in_cryo_grid.py 20170529 20170530
+exit
+for DATE in 20190129 20180203; do
+python reformat_cryo.py /scratch/fab0/Projects/cerise/carra_snow_data/cryo/snowcover_daily_${DATE}.nc snowcover_simple_${DATE}.nc
+done
+
+exit
+
+for YYYY in 2016 2017 2018 2019; do
 if [[ $YYYY -lt 2016 ]]; then
 MONTHS="10 11 12"
 else
@@ -47,7 +67,7 @@ maxday_month
 for D in $(seq -w 1 $MAXDAY); do
 
   DATE=${PERIOD}$D
-  python reformat_cryo.py /scratch/fab0/Projects/cerise/carra_snow_data/cryo/snowcover_daily_${DATE}.nc snowcover_reformatted_${DATE}.nc
+  python reformat_cryo.py /scratch/fab0/Projects/cerise/carra_snow_data/cryo/snowcover_daily_${DATE}.nc snowcover_simple_${DATE}.nc
 
 done
 
