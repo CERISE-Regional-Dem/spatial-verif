@@ -1,5 +1,15 @@
 # spatial-verif
-Spatial verification scripts
+Verification scripts for carrying out spatial verification of snow cover
+using the MET package.
+Currently tested on the following data
+
+Model data:
+- CARRA1
+- CERISE demonstrator version 1
+
+Observational data
+- IMS
+- CRYO
 
 ## libraries used
 - [harp](https://harphub.github.io/harp/). For installation instructions follow this guide: [INSTALLATION.md](https://github.com/harphub/oper-harp-verif/tree/master/ACCORD_VS_202406) document.
