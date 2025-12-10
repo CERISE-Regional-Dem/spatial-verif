@@ -111,7 +111,7 @@ for the CERISE general meeting in March 2025.
 
 ---
 
-### 5. FSS Comparison Scripts (NOT IN REPOSITORY)
+### 5. FSS Comparison Scripts 
 
 #### `compare_fss_time_series.py` 
 **Purpose:** Compares FSS time series between different models (CERISE vs CARRA1).
@@ -143,9 +143,9 @@ for the CERISE general meeting in March 2025.
 
 ---
 
-### 6. Monthly FSS Analysis (NOT IN REPOSITORY)
+### 6. Monthly FSS Analysis 
 
-#### `monthly_fss_analysis.py` ✗ NOT IN REPOSITORY
+#### `monthly_fss_analysis.py` 
 **Purpose:** Performs monthly aggregation and analysis of FSS scores.
 - Monthly averaging of FSS scores
 - Seasonal pattern analysis
@@ -157,7 +157,7 @@ for the CERISE general meeting in March 2025.
 
 ---
 
-### 7. Interactive Polygon Selection Tools (NOT IN REPOSITORY)
+### 7. Interactive Polygon Selection Tools 
 
 #### `select_a_polygon_MET_file.py` 
 **Purpose:** Interactive polygon selection specifically for MET verification output files.
@@ -176,7 +176,7 @@ polygon to select a region in the verification (using grid_stat).
 
 ---
 
-### 8. NetCDF Visualization Tools (NOT IN REPOSITORY)
+### 8. NetCDF Visualization Tools 
 
 #### `plot_nc_files_from_met.py` 
 **Purpose:** Plotting for MET verification NetCDF output files.
@@ -187,7 +187,7 @@ polygon to select a region in the verification (using grid_stat).
 - Includes coastlines, borders, and gridlines
 
 
-#### `plot_variables_nc_files.py` ✗ NOT IN REPOSITORY
+#### `plot_variables_nc_files.py` 
 **Purpose:** General-purpose NetCDF variable plotting tool.
 **Key Features:**
 - Plots various variables from NetCDF files
@@ -195,5 +195,3 @@ polygon to select a region in the verification (using grid_stat).
 
 
 ---
-
-
