@@ -17,10 +17,12 @@ model="eraland"
 model="CARRA1_LAND2"
 year="2016"
 this_period="2015"
+max_points = 121  # Maximum number of neighbourhood points to include in heatmap
 date_ini = datetime(2015,10,15)
 date_end = datetime(2015,11,29)
 #MET_res = f"/media/cap/extra_work/CERISE/MET_{model.upper()}_vs_IMS_winter_2015"
 MET_res = f"/media/cap/extra_work/CERISE/MET_{model}_CRYO"
+
 all_results = os.listdir(MET_res)
 results = OrderedDict()
 for f in all_results:
@@ -57,21 +59,39 @@ for f in all_results:
 
 df_fss_full = pd.DataFrame(columns=["date","points","fss"])
 
-
+print("\n=== DEBUG: Processing FSS files ===")
 for key in fss_files:
     data = fss_files[key][fss_files[key]["VX_MASK"] == REGION]
+    print(f"Date key: {key}, Number of rows: {len(data)}")
     for _,r in data.iterrows():
         conv_date = datetime.strptime(r["FCST_VALID_BEG"],"%Y%m%d_%H%M%S")
-        data_row = pd.DataFrame({"date":[conv_date],"points":[r["INTERP_PNTS"]],"fss":[r["FSS"]]},columns=["date","points","fss"])
+        fss_value = r["FSS"]
+        points_value = r["INTERP_PNTS"]
+        print(f"  Date: {conv_date}, Points: {points_value}, FSS: {fss_value}, FSS is NaN: {pd.isna(fss_value)}")
+        data_row = pd.DataFrame({"date":[conv_date],"points":[points_value],"fss":[fss_value]},columns=["date","points","fss"])
         df_fss_full=pd.concat([df_fss_full,data_row],ignore_index=True)
 
+print(f"\n=== DEBUG: Total rows in df_fss_full: {len(df_fss_full)} ===")
+print(f"Unique dates: {df_fss_full['date'].nunique()}")
+print(f"Unique points: {sorted(df_fss_full['points'].unique())}")
+print(f"FSS NaN count: {df_fss_full['fss'].isna().sum()}")
 
-#this for plotting
 df_fss_full["day"] = df_fss_full["date"].dt.strftime('%Y-%m-%d')
 
-
+print(f"\n=== DEBUG: Filtering data between {date_ini} and {date_end} ===")
 select = df_fss_full[(df_fss_full.date >= date_ini) & (df_fss_full.date <= date_end)]
+print(f"Rows after date filter: {len(select)}")
+print(f"Unique days after filter: {select['day'].nunique()}")
+print(f"Unique points after filter: {sorted(select['points'].unique())}")
+
+print(f"\n=== DEBUG: Filtering points <= {max_points} ===")
+select = select[select['points'] <= max_points]
+print(f"Rows after points filter: {len(select)}")
+print(f"Unique points after points filter: {sorted(select['points'].unique())}")
+
+print("\n=== DEBUG: Creating pivot table ===")
 pivot_df = select.pivot(index='day', columns='points', values='fss')
+
 
 from matplotlib.colors import LinearSegmentedColormap
 # Create custom colormap (red to green)
