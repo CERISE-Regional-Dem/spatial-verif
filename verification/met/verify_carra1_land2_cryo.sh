@@ -46,14 +46,15 @@ export MET_GRIB_TABLES=/perm/nhd/MET/share/met/table_files/grib2_for_cerise.txt
 for YYYY in 2015; do
 
 if [[ $YYYY -lt 2016 ]]; then
-MONTHS="10"
+#MONTHS="10"
+MONTHS="10 11"
 else
 MONTHS="$(seq -w 1 12)"
 fi
 for MM in ${MONTHS}; do
 PERIOD=$YYYY${MM}
 maxday_month
-for D in $(seq -w 15 $MAXDAY); do
+for D in $(seq -w 1 $MAXDAY); do
 DATE=${PERIOD}$D
 
 #OB=$OBPATH/bin_snow_cryo_${DATE}.nc
